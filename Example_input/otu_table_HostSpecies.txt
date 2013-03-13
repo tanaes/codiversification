@@ -1,0 +1,113 @@
+#Category OTU Counts-HostSpecies
+#OTU ID	Megachile_odontostoma	Agapostemon_virescens	Philanthus_gibbosus	Chalybion_californicum	Hoplitis_biscutellae	Paragia_vespiformis	Rediviva_saetigera	Halictus_patellatus	Apis_mellifera	Xylocopa_californica	Diadasia_opuntiae	Colletes_inaequalis	Apis_dorsata	Bombus_impatiens	Hesperapis_cockerelli	Apis_andreniformis	Caupolicana_yarrowi	Calliopsis_subalpinus	Bombus_sp.	Bombus_sonorus	Consensus Lineage
+0	0	0	0	0	0	0	0	19	0	0	0	0	0	0	0	0	0	0	0	0	Root; Bacteria; Tenericutes; Mollicutes; Entomoplasmatales; Spiroplasmataceae; Spiroplasma
+1	1	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	Root; Bacteria; Proteobacteria; Alphaproteobacteria; Rhizobiales; Bradyrhizobiaceae; Bradyrhizobium
+2	0	0	0	0	0	1	0	0	0	0	0	0	0	0	0	0	1	0	0	0	Root; Bacteria; Actinobacteria; Actinobacteria; Actinobacteridae; Actinomycetales; Propionibacterineae; Propionibacteriaceae; Propionibacterium
+3	0	0	0	0	0	0	0	0	1	0	0	0	0	0	0	0	0	0	0	0	Root; Bacteria; Firmicutes; "Bacilli"
+4	0	0	0	0	0	0	0	0	0	0	1	0	0	0	0	0	0	0	0	0	Root; Bacteria; Firmicutes; "Bacilli"; "Lactobacillales"; Lactobacillaceae; Lactobacillus
+5	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	4	0	0	0	Root; Bacteria; Actinobacteria; Actinobacteria; Actinobacteridae; Actinomycetales; Propionibacterineae; Nocardioidaceae; Nocardioides
+6	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	1	0	0	0	0	Root; Bacteria; Proteobacteria; Gammaproteobacteria; Enterobacteriales; Enterobacteriaceae
+7	0	0	0	0	0	0	0	0	57	0	0	0	0	0	0	0	0	0	0	0	Root; Bacteria; Firmicutes; "Bacilli"; "Lactobacillales"
+8	0	0	0	0	0	0	0	0	2	0	0	0	0	0	0	0	0	0	0	0	Root; Bacteria; Actinobacteria; Actinobacteria; Actinobacteridae; Bifidobacteriales; Bifidobacteriaceae; Bifidobacterium
+9	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	1	0	0	0	0	Root; Bacteria; Proteobacteria; Alphaproteobacteria; Rhizobiales
+10	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	1	0	0	0	0	Root; Bacteria; Proteobacteria; Alphaproteobacteria; Rhizobiales
+11	0	0	0	0	0	0	0	0	0	0	0	0	2	0	0	0	0	0	0	0	Root; Bacteria; Proteobacteria; Betaproteobacteria
+12	0	0	0	0	0	0	0	0	0	0	0	0	1	0	0	0	0	0	0	0	Root; Bacteria; Proteobacteria; Betaproteobacteria; Burkholderiales; Burkholderiaceae
+13	0	0	0	0	0	0	0	0	8	0	0	0	0	0	0	0	0	0	0	0	Root; Bacteria; Firmicutes; "Bacilli"; "Lactobacillales"
+14	0	0	0	0	0	0	0	0	0	0	0	0	0	1	0	0	0	0	2	0	Root; Bacteria; Proteobacteria; Betaproteobacteria; Burkholderiales; Burkholderiaceae; Burkholderia
+15	0	0	0	0	0	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	Root; Bacteria; Actinobacteria; Actinobacteria; Actinobacteridae; Actinomycetales; Propionibacterineae; Nocardioidaceae; Nocardioides
+16	0	0	0	0	0	0	0	0	0	0	0	0	1	0	0	0	0	0	0	0	Root; Bacteria; Proteobacteria; Betaproteobacteria; Burkholderiales
+17	0	1	2	3	1	0	1	0	2	253	0	1	0	0	1	0	1	0	0	0	Root; Bacteria; Proteobacteria; Gammaproteobacteria; Enterobacteriales; Enterobacteriaceae
+18	0	0	0	0	0	0	0	0	3	14	0	0	0	0	0	0	0	0	0	0	Root; Bacteria; Proteobacteria; Alphaproteobacteria; Rhodospirillales; Acetobacteraceae
+19	0	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	12	0	0	0	Root; Bacteria; Actinobacteria; Actinobacteria; Actinobacteridae; Actinomycetales; Micrococcineae; Microbacteriaceae; Microbacterium
+20	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	Root; Bacteria; Aquificae; Aquificae; Aquificales; Aquificaceae; Hydrogenobaculum
+21	0	0	3	11	0	6	1	4	1	3	0	4	0	0	1	0	1	1	0	0	Root; Bacteria; Proteobacteria; Betaproteobacteria; Burkholderiales; Burkholderiaceae; Ralstonia
+22	0	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	Root; Bacteria; Proteobacteria; Alphaproteobacteria; Sphingomonadales; Sphingomonadaceae; Sphingobium
+23	0	0	0	0	0	0	0	0	0	0	0	0	0	0	1	0	0	0	0	0	Root; Bacteria; Proteobacteria; Betaproteobacteria; Burkholderiales; Comamonadaceae
+24	0	2	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	Root; Bacteria; Actinobacteria; Actinobacteria; Actinobacteridae; Actinomycetales
+25	0	0	0	0	0	0	0	0	0	1	0	0	0	0	0	0	0	0	0	0	Root; Bacteria; Proteobacteria
+26	0	0	0	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	Root; Bacteria; Proteobacteria; Alphaproteobacteria; Caulobacterales; Caulobacteraceae
+27	0	0	0	0	0	0	0	0	0	18	0	0	0	0	0	0	20	0	0	0	Root; Bacteria; Proteobacteria; Alphaproteobacteria; Rhodospirillales; Acetobacteraceae; Saccharibacter
+28	0	0	0	0	0	0	0	0	0	0	0	1	0	0	0	0	0	0	0	0	Root; Bacteria
+29	0	0	0	0	0	0	0	0	0	0	0	0	18	0	0	0	0	0	0	0	Root; Bacteria; Proteobacteria; Betaproteobacteria; Burkholderiales
+30	0	0	0	0	0	0	0	0	8	0	0	0	0	0	0	0	0	0	0	0	Root; Bacteria; Firmicutes; "Bacilli"; "Lactobacillales"; "Aerococcaceae"
+31	0	0	0	0	0	0	0	0	58	0	0	0	0	0	0	0	0	0	0	0	Root; Bacteria; Proteobacteria; Gammaproteobacteria
+32	0	0	0	0	0	0	0	0	3	0	0	0	0	0	0	0	0	0	0	0	Root; Bacteria; Firmicutes; "Bacilli"; "Lactobacillales"
+33	0	0	0	0	0	0	0	1	0	0	0	0	0	0	0	0	0	0	1	0	Root; Bacteria; Proteobacteria; Betaproteobacteria; Burkholderiales; Burkholderiaceae; Burkholderia
+34	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	9	0	0	Root; Bacteria; Proteobacteria; Alphaproteobacteria; Rhodospirillales; Acetobacteraceae
+35	0	0	4	2	0	5	0	1	0	0	0	0	0	0	1	0	0	0	0	0	Root; Bacteria; Proteobacteria; Alphaproteobacteria; Rhizobiales; Hyphomicrobiaceae; Hyphomicrobium
+36	0	0	0	0	0	3	0	1	0	0	0	0	0	0	0	0	0	0	0	0	Root; Bacteria; Proteobacteria; Betaproteobacteria; Burkholderiales; Incertae sedis 5; Pelomonas
+37	0	0	0	0	0	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	Root; Bacteria; Firmicutes; "Bacilli"; "Lactobacillales"; Streptococcaceae; Streptococcus
+38	0	0	0	0	0	0	0	0	40	0	0	0	0	0	0	0	0	0	0	1	Root; Bacteria; Proteobacteria; Betaproteobacteria; Neisseriales; Neisseriaceae
+39	2	2	1	3	0	2	0	2	0	1	0	2	0	0	0	0	0	1	0	0	Root; Bacteria; Bacteroidetes; Sphingobacteria; Sphingobacteriales; Crenotrichaceae; Terrimonas
+40	0	0	0	0	0	0	0	0	0	0	0	0	1	0	0	11	0	0	0	0	Root; Bacteria
+41	0	0	0	0	0	0	0	0	0	0	0	0	2	0	0	0	0	0	0	0	Root; Bacteria; Proteobacteria; Alphaproteobacteria; Rhizobiales
+42	0	0	0	0	0	0	0	0	0	0	0	0	1	5	0	0	0	0	0	0	Root; Bacteria; Proteobacteria; Gammaproteobacteria
+43	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	2	Root; Bacteria; Proteobacteria; Betaproteobacteria; Neisseriales; Neisseriaceae
+44	0	0	0	0	0	0	0	0	0	0	0	0	0	0	1	0	0	0	0	0	Root; Bacteria; Proteobacteria; Alphaproteobacteria; Rhizobiales; Methylobacteriaceae; Methylobacterium
+45	0	0	0	0	0	0	0	0	0	0	0	0	1	1	0	0	0	0	0	69	Root; Bacteria; Proteobacteria; Betaproteobacteria
+46	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	1	Root; Bacteria; Proteobacteria; Betaproteobacteria; Neisseriales; Neisseriaceae
+47	0	0	0	0	0	0	0	0	0	0	261	0	0	0	0	0	82	0	0	0	Root; Bacteria; Firmicutes; "Bacilli"; "Lactobacillales"; Lactobacillaceae; Lactobacillus
+48	0	0	0	0	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	Root; Bacteria; Firmicutes; "Bacilli"; "Lactobacillales"; Streptococcaceae; Streptococcus
+49	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	1	0	Root; Bacteria
+50	0	0	0	0	0	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	Root; Bacteria; Bacteroidetes; Flavobacteria; Flavobacteriales; Flavobacteriaceae; Elizabethkingia
+51	0	0	0	0	0	0	1	0	0	0	0	0	0	0	0	0	0	0	0	0	Root; Bacteria; Proteobacteria; Betaproteobacteria; Burkholderiales
+52	0	0	0	0	0	0	1	0	0	0	0	1	0	0	0	0	0	0	0	0	Root; Bacteria; Proteobacteria; Alphaproteobacteria; Rickettsiales; Anaplasmataceae; Wolbachia
+53	0	0	0	0	0	0	0	0	45	0	0	0	0	0	0	0	0	0	0	0	Root; Bacteria; Firmicutes; "Bacilli"; "Lactobacillales"; Lactobacillaceae
+54	0	0	0	0	0	0	0	0	1	0	0	0	0	0	0	0	0	0	0	0	Root; Bacteria; Firmicutes; "Bacilli"; "Lactobacillales"
+55	0	0	0	0	0	0	0	0	0	0	0	1	0	0	0	0	0	0	0	0	Root; Bacteria; Proteobacteria; Deltaproteobacteria; Myxococcales; Sorangineae; Polyangiaceae
+56	0	0	0	0	0	0	0	0	0	0	0	0	0	1	0	0	0	0	0	0	Root; Bacteria; Proteobacteria; Gammaproteobacteria; Pasteurellales; Pasteurellaceae
+57	0	0	0	0	0	0	0	0	0	0	0	0	0	1	0	0	0	0	0	0	Root; Bacteria; Proteobacteria; Betaproteobacteria; Burkholderiales; Burkholderiaceae; Burkholderia
+58	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	1	0	Root; Bacteria; Proteobacteria; Betaproteobacteria; Burkholderiales
+59	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	1	0	0	Root; Bacteria; Proteobacteria; Alphaproteobacteria; Rhizobiales; Methylobacteriaceae; Microvirga
+60	0	0	0	0	0	0	1	0	0	0	0	0	0	0	0	0	0	0	0	0	Root; Bacteria; Firmicutes; "Clostridia"; Clostridiales; Veillonellaceae
+61	0	0	0	0	0	0	0	0	0	0	0	1	0	0	0	0	0	0	0	0	Root; Bacteria; Proteobacteria; Gammaproteobacteria; Pseudomonadales; Moraxellaceae; Alkanindiges
+62	0	0	0	0	0	0	0	2	0	0	0	0	0	0	0	0	0	0	0	0	Root; Bacteria; Proteobacteria; Alphaproteobacteria; Rhizobiales; Brucellaceae
+63	0	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	Root; Bacteria; Firmicutes; "Bacilli"; Bacillales; Planococcaceae; Pasteuriaceae Incertae Sedis
+64	0	0	0	0	0	0	0	0	1	0	0	0	0	0	0	0	0	0	0	0	Root; Bacteria; Firmicutes; "Bacilli"; "Lactobacillales"
+65	0	0	0	0	0	0	0	0	1	0	0	0	1	0	0	0	0	0	0	0	Root; Bacteria; Proteobacteria; Alphaproteobacteria
+66	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	1	Root; Bacteria; Proteobacteria; Betaproteobacteria; Neisseriales; Neisseriaceae
+67	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	2	0	0	0	0	Root; Bacteria; Proteobacteria; Alphaproteobacteria
+68	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	1	0	0	0	0	Root; Bacteria; Proteobacteria; Alphaproteobacteria; Rhizobiales
+69	0	0	0	0	0	0	0	0	0	0	0	0	1	0	0	0	0	0	0	0	Root; Bacteria; Bacteroidetes; Bacteroidetes; Bacteroidales; Porphyromonadaceae; Dysgonomonas
+70	0	0	0	0	0	4	0	0	0	0	0	0	0	0	0	0	0	0	0	0	Root; Bacteria; Proteobacteria; Alphaproteobacteria; Rhizobiales
+71	1	0	0	0	2	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	Root; Bacteria; Proteobacteria; Gammaproteobacteria; Enterobacteriales; Enterobacteriaceae
+72	0	0	0	4	1	5	0	1	0	0	0	2	0	0	1	0	2	0	0	0	Root; Bacteria; Proteobacteria; Betaproteobacteria; Burkholderiales; Comamonadaceae; Curvibacter
+73	0	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	Root; Bacteria; Firmicutes; "Bacilli"; "Lactobacillales"; Lactobacillaceae
+74	0	1	0	0	0	2	0	0	0	0	0	0	0	0	0	0	0	0	0	0	Root; Bacteria; Proteobacteria; Alphaproteobacteria; Rhizobiales
+75	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	1	0	0	0	0	Root; Bacteria; Firmicutes; "Clostridia"; Clostridiales; Veillonellaceae; Pectinatus
+76	0	0	0	0	0	0	0	0	0	0	0	0	23	0	0	44	0	0	0	1	Root; Bacteria; Proteobacteria; Alphaproteobacteria; Rhizobiales
+77	0	0	0	0	0	0	0	0	0	0	0	0	1	0	0	0	0	0	0	0	Root; Bacteria; Proteobacteria; Betaproteobacteria; Burkholderiales
+78	0	0	0	0	0	0	0	0	0	0	0	0	1	0	0	1	0	0	0	0	Root; Bacteria; Proteobacteria; Alphaproteobacteria; Rhizobiales
+79	0	0	0	0	0	0	0	0	1	0	0	0	0	0	0	0	0	0	0	0	Root; Bacteria; Firmicutes; "Bacilli"; "Lactobacillales"
+80	0	127	88	0	0	0	290	0	0	0	1	188	0	0	0	0	0	0	0	0	Root; Bacteria; Proteobacteria; Alphaproteobacteria; Rickettsiales; Anaplasmataceae; Wolbachia
+81	330	125	254	147	170	186	34	263	1	10	4	90	0	2	342	3	41	267	9	0	Root; Bacteria; Proteobacteria; Betaproteobacteria; Burkholderiales; Burkholderiaceae; Burkholderia
+82	0	0	0	0	0	0	0	0	35	0	0	0	0	0	0	0	0	0	0	0	Root; Bacteria; Actinobacteria; Actinobacteria; Actinobacteridae; Bifidobacteriales; Bifidobacteriaceae; Bifidobacterium
+83	0	0	0	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	Root; Bacteria; Proteobacteria; Gammaproteobacteria; Oceanospirillales; Halomonadaceae; Zymobacter
+84	0	0	0	0	0	0	0	0	0	0	18	0	0	0	0	0	0	0	0	0	Root; Bacteria; Firmicutes; "Bacilli"; "Lactobacillales"; "Leuconostocaceae"; Leuconostoc
+85	0	0	0	0	0	0	0	0	0	0	37	0	0	0	0	0	0	0	0	0	Root; Bacteria; Firmicutes; "Bacilli"; "Lactobacillales"; "Leuconostocaceae"; Weissella
+86	0	0	0	0	0	0	0	0	1	0	0	0	0	0	0	1	0	0	0	0	Root; Bacteria; Proteobacteria
+87	0	0	0	0	0	0	0	0	0	0	21	0	0	0	0	0	0	0	0	0	Root; Bacteria; Firmicutes; "Bacilli"; "Lactobacillales"; "Leuconostocaceae"; Leuconostoc
+88	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	1	0	0	0	0	Root; Bacteria; Proteobacteria; Alphaproteobacteria; Rhizobiales
+89	0	0	0	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	Root; Bacteria; Proteobacteria; Alphaproteobacteria; Rhodospirillales; Acetobacteraceae
+90	0	1	0	0	0	0	0	0	0	0	0	1	0	0	0	0	0	0	0	0	Root; Bacteria; Proteobacteria; Alphaproteobacteria; Rickettsiales; Anaplasmataceae; Wolbachia
+91	0	0	0	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	Root; Bacteria; Actinobacteria; Actinobacteria; Actinobacteridae; Actinomycetales; Micrococcineae; Micrococcaceae; Arthrobacter
+92	3	1	7	23	4	25	4	6	2	4	1	6	0	0	1	0	3	3	0	0	Root; Bacteria; Proteobacteria; Gammaproteobacteria; Xanthomonadales; Xanthomonadaceae; Stenotrophomonas
+93	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	3	0	0	0	Root; Bacteria; Actinobacteria; Actinobacteria; Actinobacteridae; Actinomycetales; Propionibacterineae; Nocardioidaceae; Nocardioides
+94	0	7	1	0	1	0	0	0	0	0	0	0	0	0	0	0	36	0	0	0	Root; Bacteria; Proteobacteria; Gammaproteobacteria; Pseudomonadales; Moraxellaceae; Acinetobacter
+95	0	0	0	0	0	0	0	1	0	0	0	0	0	0	0	0	0	0	0	0	Root; Bacteria; Proteobacteria; Betaproteobacteria; Burkholderiales; Comamonadaceae; Delftia
+96	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	1	Root; Bacteria; Proteobacteria; Betaproteobacteria; Neisseriales; Neisseriaceae
+97	0	0	0	0	0	0	0	1	0	0	0	0	0	0	0	0	0	0	0	0	Root; Bacteria; Actinobacteria; Actinobacteria; Actinobacteridae; Actinomycetales; Propionibacterineae; Nocardioidaceae; Nocardioides
+98	0	0	0	6	0	3	0	1	0	0	0	1	0	0	0	0	0	0	0	0	Root; Bacteria; Bacteroidetes; Sphingobacteria; Sphingobacteriales
+99	0	0	0	0	0	0	0	1	0	1	0	0	13	60	0	10	0	0	65	2	Root; Bacteria; Proteobacteria; Betaproteobacteria; Burkholderiales; Burkholderiaceae; Burkholderia
+100	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	1	0	Root; Bacteria; Proteobacteria; Betaproteobacteria; Burkholderiales; Burkholderiaceae; Burkholderia
+101	0	0	0	0	0	0	0	0	0	0	0	0	3	0	0	0	0	0	0	0	Root; Bacteria; Proteobacteria; Alphaproteobacteria; Rhodospirillales; Acetobacteraceae; Saccharibacter
+102	0	0	0	0	0	0	0	0	4	0	0	0	0	0	0	0	0	0	0	0	Root; Bacteria; Firmicutes; "Bacilli"; "Lactobacillales"
+103	0	0	0	0	0	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	Root; Bacteria; Proteobacteria; Alphaproteobacteria; Sphingomonadales; Sphingomonadaceae
+104	0	0	0	0	0	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	Root; Bacteria; Actinobacteria; Actinobacteria; Actinobacteridae; Actinomycetales; Corynebacterineae; Nocardiaceae; Rhodococcus
+105	0	1	0	0	2	0	0	1	0	0	2	0	0	0	0	0	50	0	0	0	Root; Bacteria; Firmicutes; "Bacilli"; "Lactobacillales"; Lactobacillaceae; Lactobacillus
+106	0	0	0	0	0	0	0	0	1	0	0	0	0	0	0	0	0	0	0	0	Root; Bacteria; Firmicutes; "Bacilli"; "Lactobacillales"; "Aerococcaceae"
+107	0	0	0	0	0	0	0	0	262	0	0	2	0	0	0	0	0	0	0	0	Root; Bacteria; Firmicutes; "Bacilli"; "Lactobacillales"
+108	0	0	0	0	0	0	0	0	0	0	1	0	0	0	0	0	0	0	0	0	Root; Bacteria; Firmicutes; "Bacilli"; "Lactobacillales"; Lactobacillaceae; Lactobacillus
+109	0	0	0	0	0	0	0	0	0	0	0	0	1	0	0	0	0	0	0	0	Root; Bacteria; Bacteroidetes; Bacteroidetes; Bacteroidales; Porphyromonadaceae; Dysgonomonas
+110	0	0	0	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	Root; Bacteria; Firmicutes; "Bacilli"; Bacillales; "Staphylococcaceae"; Staphylococcus

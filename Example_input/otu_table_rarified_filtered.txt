@@ -1,0 +1,12 @@
+# QIIME v1.4.0 OTU table
+#OTU ID	SHNI	SHNN	SHNO	SHNP	SHNS	SHNT	SHNU	SHNW	SHNX	SHNY	SHNZ	SHOA	SHOB	SHOC	SHOF	SHOG	Consensus Lineage
+17	0	0	0	1	0	1	2	0	0	0	0	0	80	0	0	0	Root;Bacteria;Proteobacteria;Gammaproteobacteria;Enterobacteriales;Enterobacteriaceae
+21	0	1	0	0	0	0	5	0	0	0	3	1	2	0	3	0	Root;Bacteria;Proteobacteria;Betaproteobacteria;Burkholderiales;Burkholderiaceae;Ralstonia
+39	0	0	0	1	1	0	3	0	0	0	1	0	0	0	0	0	Root;Bacteria;Bacteroidetes;Sphingobacteria;Sphingobacteriales;Crenotrichaceae;Terrimonas
+72	0	0	0	0	0	1	4	0	0	0	3	0	0	0	1	0	Root;Bacteria;Proteobacteria;Betaproteobacteria;Burkholderiales;Comamonadaceae;Curvibacter
+80	0	0	0	51	0	0	0	20	0	86	0	0	0	1	64	0	Root;Bacteria;Proteobacteria;Alphaproteobacteria;Rickettsiales;Anaplasmataceae;Wolbachia
+81	99	92	12	41	98	95	72	75	84	13	75	0	4	1	27	0	Root;Bacteria;Proteobacteria;Betaproteobacteria;Burkholderiales;Burkholderiaceae;Burkholderia
+92	0	2	1	0	0	2	8	2	2	0	14	1	1	0	2	0	Root;Bacteria;Proteobacteria;Gammaproteobacteria;Xanthomonadales;Xanthomonadaceae;Stenotrophomonas
+94	0	0	21	3	0	0	0	1	0	0	0	0	0	0	0	0	Root;Bacteria;Proteobacteria;Gammaproteobacteria;Pseudomonadales;Moraxellaceae;Acinetobacter
+98	0	0	0	0	0	0	4	0	1	0	0	0	0	0	1	0	Root;Bacteria;Bacteroidetes;Sphingobacteria;Sphingobacteriales
+107	0	0	0	0	0	0	0	0	0	0	0	60	0	0	1	44	Root;Bacteria;Firmicutes;"Bacilli";"Lactobacillales"

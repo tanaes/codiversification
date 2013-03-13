@@ -1,0 +1,12 @@
+# QIIME v1.4.0 OTU table
+#OTU ID	Megachile_odontostoma	Agapostemon_virescens	Philanthus_gibbosus	Chalybion_californicum	Hoplitis_biscutellae	Paragia_vespiformis	Rediviva_saetigera	Halictus_patellatus	Xylocopa_californica	Diadasia_opuntiae	Colletes_inaequalis	Hesperapis_cockerelli	Caupolicana_yarrowi	Calliopsis_subalpinus	Consensus Lineage
+17	0	0	1	1	1	0	0	0	80	0	1	0	0	0	Root;Bacteria;Proteobacteria;Gammaproteobacteria;Enterobacteriales;Enterobacteriaceae
+21	0	0	0	6	0	0	0	2	2	0	1	0	0	1	Root;Bacteria;Proteobacteria;Betaproteobacteria;Burkholderiales;Burkholderiaceae;Ralstonia
+39	0	1	0	0	0	1	0	0	0	0	1	0	0	1	Root;Bacteria;Bacteroidetes;Sphingobacteria;Sphingobacteriales;Crenotrichaceae;Terrimonas
+72	0	0	0	2	0	1	0	1	0	0	2	0	1	0	Root;Bacteria;Proteobacteria;Betaproteobacteria;Burkholderiales;Comamonadaceae;Curvibacter
+80	0	50	23	0	0	0	83	0	0	0	63	0	0	0	Root;Bacteria;Proteobacteria;Alphaproteobacteria;Rickettsiales;Anaplasmataceae;Wolbachia
+81	98	43	73	68	95	81	13	86	2	1	27	98	16	91	Root;Bacteria;Proteobacteria;Betaproteobacteria;Burkholderiales;Burkholderiaceae;Burkholderia
+92	1	0	2	13	2	9	3	1	2	1	2	1	2	0	Root;Bacteria;Proteobacteria;Gammaproteobacteria;Xanthomonadales;Xanthomonadaceae;Stenotrophomonas
+94	0	3	1	0	0	0	0	0	0	0	0	0	14	0	Root;Bacteria;Proteobacteria;Gammaproteobacteria;Pseudomonadales;Moraxellaceae;Acinetobacter
+98	0	0	0	5	0	2	0	0	0	0	1	0	0	0	Root;Bacteria;Bacteroidetes;Sphingobacteria;Sphingobacteriales
+105	0	0	0	0	1	0	0	1	0	1	0	0	19	0	Root;Bacteria;Firmicutes;"Bacilli";"Lactobacillales";Lactobacillaceae;Lactobacillus
