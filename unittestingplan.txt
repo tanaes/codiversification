@@ -1,0 +1,63 @@
+What it does:
+
+run_test_cospeciation
+
+takes:
+	- cOTU basename
+	- host tree fp
+	- host_dist matrix
+	- mapping_fp
+	- mapping_category
+	- output_dir
+	- test to run
+	- sig level
+	- perms
+
+does:
+	• opens cOTU table
+	• opens mapping file
+	• summarizes cOTU table by mapping file
+	• checks that is less than 3 hosts of otus
+	• imports cOTU tree
+	• Roots at midpoint
+	• imports host tree
+	• gets rid of samples and OTUs from otu table not in host tree
+	• subsets host tree to just hosts represented in subset otu table
+	• subsets otu tree to just OTUs respresented in subset otu table
+	• filters host DM to just hosts represented in subset otu table
+	• checks that there are still more >= 3 hosts/otus
+	• runs test
+	• calculates p value
+	• writes results file
+		-calculates h span
+
+suggest:
+does:
+	
+	move all filehandling to parent 
+	{
+		• opens cOTU table
+		• opens mapping file
+		• summarizes cOTU table by mapping file
+		• checks that is less than 3 hosts of otus
+		• imports cOTU tree
+		• Roots at midpoint
+		• imports host tree
+	}
+	
+	make function "intersect samples":
+	{
+		• gets rid of samples and OTUs from otu table not in host tree
+		• subsets host tree to just hosts represented in subset otu table
+		• subsets otu tree to just OTUs respresented in subset otu table
+		• filters host DM to just hosts represented in subset otu table
+		• checks that there are still more >= 3 hosts/otus
+	}
+	• runs test
+	• calculates p value
+	
+	move results writing to parent, separate into function "write results":
+	{
+		• writes results file
+			-calculates h span <--move to function to modify acc_dict after test
+	}
