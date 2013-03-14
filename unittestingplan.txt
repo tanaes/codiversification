@@ -47,7 +47,7 @@ does:
 	
 	make function "intersect samples":
 	{
-		• gets rid of samples and OTUs from otu table not in host tree
+		• gets rid of hosts and OTUs from otu table not in host tree
 		• subsets host tree to just hosts represented in subset otu table
 		• subsets otu tree to just OTUs respresented in subset otu table
 		• filters host DM to just hosts represented in subset otu table
@@ -56,6 +56,14 @@ does:
 		#Input: otu table, host tree, host DM
 		#Actions: finds intersection of hosts represented in OTU tables, trees, 
 			and DMs. 
+		
+		#Don't need to warn about Samples not present in host tree -- should only do this at initial tree filter
+		#get rid of summarize code -- messes up rarifactions. rely on user to summarize and rarify input otu table before preclustering. 
+		#replace filter DM with code form filter_distance_matrix.py
+		#replace filter tree with code from filter_tree.py in 1.6.0 (add temporarily to this script)
+		#replace filter otu table by tree with filter_samples_from_otu_table(otu_table_lines,
+                                  samples_to_discard,
+                                  negate=False) in filter.py
 	}
 	• runs test
 	• calculates p value
