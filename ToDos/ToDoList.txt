@@ -1,0 +1,102 @@
+TO-DO
+
+Nate:
+	- re-code make_dists_and_tree
+		- accept as input [1] a list of host names, and [2] host_tree_fp
+		- test to see if it's a tree, dm, or DNA alignment
+		- for each of:
+			* load tree and make dm 
+			* load dm and make tree
+			* load aln and make dm and make tree
+			move to a new (small, unit test-able) method. Use the 
+			cogent_dist_to_qiime_dist method I made so that, in every case, the
+			dm is output as a qiime dm tuple (sample_names, numpy_dm_array)
+		- move the dm and tree reduction to the end so that we don't duplicate
+		  that code. Use the .getSubTree and qiime:filter:
+		  filter_samples_from_distance_matrix methods. (you pass the list of 
+		  host names)
+		- have the method return the filtered cogent tree object and the 
+		  filtered qiime distance matrix tuple. We'll output both of these files
+		  to disk from the main() loop. 
+		
+Aaron: 
+	- have a stab at writing a unit test for the following sub:
+	- note that you'll need to have the bio/qiime-1.4.0 module loaded to access 
+	  the appropriate python libraries. 
+	- take a look at the test_util.py script in Qiime-1.4.0/tests for some 
+	  examples of simple unit tests for this kind of thing. 
+	  
+	  I would recommend taking a look at 
+	  'def test_make_compatible_distance_matrices(self):'
+	  and its associated method in Qiime-1.4.0/qiime/util.py
+	  
+	
+
+
+PYTHON CODE BELOW:
+
+def cogent_dist_to_qiime_dist(dist_tuple_dict):
+    """
+    This takes a dict with tuple keys and distance values, such as is output
+    by the getDistances() method of a PhyloNode object, and converts it to a 
+    QIIME-style distance matrix object: a tuple with a list of samples in [1] 
+    and a numpy array of the distance matrix in [2].
+    """
+    from StringIO import StringIO
+    from qiime.parse import parse_distmat
+    from cogent.util.dict2d import Dict2D
+    
+    headers = []
+    dist_dict = {}
+    for item in dist_tuple_dict.iteritems():
+        
+        if item[0][0] not in headers:
+            headers.append(item[0][0])
+            
+            dist_dict[item[0][0]] = {item[0][0]: 0.0}
+            dist_dict[item[0][0]][item[0][1]] = item[1]
+        else:
+            dist_dict[item[0][0]][item[0][1]] = item[1]
+    
+    dict2d = Dict2D()
+    dict2d.fromDicts(dist_dict)
+    dist_delim = dict2d.toDelimited(headers=True)
+    qiime_distmat = parse_distmat(StringIO(dist_delim[1:]))
+    
+    return qiime_distmat
+
+###Some example input and output data are below:
+
+"""
+from numpy import array
+
+dist_tuple_dict = {('SHAJ', 'SHAK'): 0.10750048520885,
+ ('SHAJ', 'SHAM'): 0.10750048520885,
+ ('SHAJ', 'SHOA'): 0.0147434146325,
+ ('SHAJ', 'SHOG'): 0.0147434146325,
+ ('SHAK', 'SHAJ'): 0.10750048520885,
+ ('SHAK', 'SHAM'): 0.048024926561999998,
+ ('SHAK', 'SHOA'): 0.10750048520885,
+ ('SHAK', 'SHOG'): 0.10750048520885,
+ ('SHAM', 'SHAJ'): 0.10750048520885,
+ ('SHAM', 'SHAK'): 0.048024926561999998,
+ ('SHAM', 'SHOA'): 0.10750048520885,
+ ('SHAM', 'SHOG'): 0.10750048520885,
+ ('SHOA', 'SHAJ'): 0.0147434146325,
+ ('SHOA', 'SHAK'): 0.10750048520885,
+ ('SHOA', 'SHAM'): 0.10750048520885,
+ ('SHOA', 'SHOG'): 0.0,
+ ('SHOG', 'SHAJ'): 0.0147434146325,
+ ('SHOG', 'SHAK'): 0.10750048520885,
+ ('SHOG', 'SHAM'): 0.10750048520885,
+ ('SHOG', 'SHOA'): 0.0}
+ 
+ 
+ qiime_distmat = (['SHOA', 'SHOG', 'SHAJ', 'SHAK', 'SHAM'],
+ array([[ 0.01474341,  0.01474341,  0.        ,  0.10750049,  0.10750049],
+       [ 0.        ,  0.        ,  0.01474341,  0.10750049,  0.10750049],
+       [ 0.10750049,  0.10750049,  0.10750049,  0.04802493,  0.        ],
+       [ 0.        ,  0.        ,  0.01474341,  0.10750049,  0.10750049],
+       [ 0.10750049,  0.10750049,  0.10750049,  0.        ,  0.04802493]]))
+ 
+"""

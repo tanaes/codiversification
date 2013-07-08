@@ -73,3 +73,14 @@ does:
 		• writes results file
 			-calculates h span <--move to function to modify acc_dict after test
 	}
+	
+
+
+
+TO DO:
+
+• Change DM handling: handle all DMs as native qiime DMs; 
+	convert to qiime dm from cogent get_distances immediately.
+	use qiime filter dm for dm filtering
+
+• 
