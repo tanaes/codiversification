@@ -21,6 +21,7 @@ from qiime.summarize_otu_by_cat import summarize_by_cat
 import StringIO
 import numpy
 from cogent.parse.tree import DndParser
+from qiime.filter import filter_samples_from_otu_table
 from cogent.core.tree import PhyloNode
 
 """
@@ -579,7 +580,7 @@ def unifrac_recursive_test(ref_tree,tree,sample_names,
             #no common taxa
             continue
     results_dict = {'p_vals':sets_below,'s_tips':s_tips,'h_tips':h_tips,'s_nodes':s_nodes,'h_nodes':h_nodes}
-
+    
     acc_dict = {'lengths':lengths,'dists':dists,'sets':sets,'dist_below':dist_below}
     
     return (results_dict, acc_dict)
@@ -773,8 +774,8 @@ def main():
     cotu_table_fp=os.path.abspath(cotu_table_fp)
     
     #Process host input (tree/alignment/matrix) and take subtree of host supertree
-    host_tree_fp, host_dist = make_dists_and_tree(potu_table_fp, host_tree_fp)
-        
+    host_tree, host_dist = make_dists_and_tree(potu_table_fp, host_tree_fp)
+    
     summary_file = open(output_dir + '/' + 'cospeciation_results_summary.txt', 'w')
     summary_file.write("sig_nodes\tnum_nodes\tfile\n")
     
@@ -807,6 +808,23 @@ def main():
                 
                 basename = cotu_basename + "_" + test
                 
+                #Import cOTU tree
+                otu_tree_fp = cotu_basename + "_seqs_rep_set.tre"
+                otu_tree_file = open(otu_tree_fp, 'r')
+                otu_tree_unrooted = DndParser(otu_tree_file, PhyloNode)
+                otu_tree_file.close()
+                
+                #root at midpoint
+                
+                ###Consider alternate step to go through and find closest DB seq to root?
+                otu_tree = otu_tree_unrooted.rootAtMidpoint()
+                
+                #Import host tree
+                #host_tree_file = open(host_tree_fp, 'r')
+                #host_tree = DndParser(host_tree_file, PhyloNode)
+                #host_tree_file.close()
+                
+                
                 #DEBUG:
                 #print "basename is:"
                 #print basename
@@ -816,127 +834,25 @@ def main():
                 #DEBUG:
                 #print mapping_fp
                 
-                ###CUT HERE
-                try:
-                    mapping_file = open(mapping_fp, 'Ur')
-                except IOerror:
-                    "Problem opening mapping file (%s). Does it exist? Do you have read access?" % mapping_fp
                 
-                #DEBUG:
-                #print "opened mapping file."
+                #Open otu table file
+                #get 
                 
-                try:
-                    summarized_cotu_table = summarize_by_cat(mapping_file,cotu_file,mapping_category,False)
-                except Error as e:
-                    print "problem summarizing otu table!"
-                    print "Error({0}): {1}".format(e.errno, e.strerror)
-                
-                #DEBUG:
-                #print "Summarized otu table"
+                filtered_cotu_table = filter_samples_from_otu_table(cotu_file,\
+                                  host_tree.getTipNames(),\
+                                  negate=True)
                 
                 
-                mapping_file.close()
-                cotu_file.close()
                 
-                #DEBUG:
-                #print "got here"
+                sample_names, taxon_names, data, lineages = parse_otu_table(filtered_cotu_table)
                 
-                #get rid of terminal empty column in summarized OTU table
-                #Could be a problem down the road?
-                summarized_cotu_table = stupid_hack(summarized_cotu_table)
-                
-                ###END CUT HERE
-                
-                
-                cotu_obj = StringIO.StringIO(summarized_cotu_table)
-                
-                #DEBUG:
-                #print otu_obj
-                
-                #parse OTU table. Return 0 nodes if less than three hosts or cOTUs.
-                #This is duplicated later on. Can we get rid of it here?
-                try:
-                    sample_names, taxon_names, data, lineages = parse_otu_table(cotu_obj)
-                    if len(sample_names) < 3 or len(taxon_names) < 3:
-                        print "Less than 3 hosts or cOTUs in cOTU table!"
-                        continue
-                except:
-                    print summarized_cotu_table + " not an OTU table?"
+                if len(sample_names) < 3 or len(taxon_names) < 3:
+                    print "Less than 3 hosts or cOTUs in cOTU table!"
                     continue
-                
-                #DEBUG:
-                #print sample_names
-                
-                
-                #Import cOTU tree
-                otu_tree_fp = cotu_basename + "_seqs_rep_set.tre"
-                otu_tree_file = open(otu_tree_fp, 'r')
-                otu_tree_unrooted = DndParser(otu_tree_file, PhyloNode)
-                otu_tree_file.close()
-                
-                #root at midpoint
-                otu_tree = otu_tree_unrooted.rootAtMidpoint()
-                
-                #Import host tree
-                host_tree_file = open(host_tree_fp, 'r')
-                host_tree = DndParser(host_tree_file, PhyloNode)
-                host_tree_file.close()
-                
-                #DEBUG: ??
-                
-                #print host_tree.asciiArt()
-                
-                #print sample_names
-                #print host_tree.getTipNames()
-                
-                #for sample in sample_names:
-                #   if sample not in host_tree.getTipNames():
-                #       print "Host tree must have all species present in OTU table!"
-                #       return False
-                
-                #check that host tree is sufficient
-                
-                for x in reversed(range(len(sample_names))):
-                    #DEBUG:
-                    #print x
-                    
-                    #is sample name in supplied host tree?
-                    if sample_names[x] not in host_tree.getTipNames():
-                        #DEBUG:
-                        #print x
-                        #print sample_names
-                        #print host_tree.getTipNames()
-                        print "Host tree must have all species present in OTU table!"
-                        
-                        
-                        #If not, remove that sample from OTU table
-                        print "Removing unknown host from OTU table"
-                        
-                        ###Is this a real copy? Do we need to do something like data.deepcopy()?
-                        original_data = data
-                        data = numpy.delete(original_data,x,1)
-                        del sample_names[x]
-                        
-                        print "Removing now-empty OTUs"
-                        
-                        #...and get rid of any cOTUs found only in the abandoned sample
-                        y = data.shape[0]
-                        
-                        #iterate through each row in data, sum it, put in rowsum
-                        for rowsum in reversed(data.sum(1)):
-                            #print "rowsum: " + str(rowsum)
-                            #print "row: " + str(y)
-                            y -= 1
-                            
-                            #delete that row
-                            if not rowsum:
-                                data = numpy.delete(data,y,0)
-                                del taxon_names[y]
                 
                 #make a subtree of the included hosts; exclude hosts not in cOTU table
                 host_subtree = host_tree.getSubTree(sample_names)
                 otu_subtree = otu_tree.getSubTree(taxon_names)
-                
                 
                 #Filter the host_dists to match the newly trimmed subtree
                 for key in host_dist.keys():
@@ -993,6 +909,7 @@ def make_dists_and_tree(potu_table_fp, host_tree_fp):
     import numpy
     import StringIO
     from qiime.summarize_otu_by_cat import summarize_by_cat
+    from qiime.parse import parse_otu_table
     from cogent.phylo import distance, nj
     from cogent.evolve.models import HKY85
     
@@ -1003,6 +920,12 @@ def make_dists_and_tree(potu_table_fp, host_tree_fp):
     written to the same directory as the original tree for reference. Both the 
     distance matrix and host subtree are passed back to the main routine for 
     testing.
+    """
+    
+    """
+    EDIT:
+    
+    Make this so that it writes all the files in the output directory for ref.
     """
     
     #Open Parent OTU table
@@ -1093,7 +1016,7 @@ def make_dists_and_tree(potu_table_fp, host_tree_fp):
     
     except Exception as e:
         print e
-    return newPath, host_dist
+    return host_tree, host_dist
 
 if __name__ == "__main__":
     main()
