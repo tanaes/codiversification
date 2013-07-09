@@ -16,13 +16,17 @@ import os, sys
 from qiime.util import load_qiime_config, parse_command_line_parameters,\
  get_options_lookup, parse_otu_table
 from qiime.parse import parse_qiime_parameters, parse_taxonomy, parse_distmat
-from cogent import LoadSeqs, DNA
+from cogent import LoadTree, LoadSeqs, DNA
 from qiime.summarize_otu_by_cat import summarize_by_cat
 import StringIO
 import numpy
 from cogent.parse.tree import DndParser
-from qiime.filter import filter_samples_from_otu_table
+from qiime.filter import filter_samples_from_otu_table, filter_samples_from_distance_matrix
 from cogent.core.tree import PhyloNode
+from cogent.parse.tree import DndParser
+import re
+from cogent.phylo import distance, nj
+from cogent.evolve.models import HKY85
 
 """
 from cogent.app.muscle import align_unaligned_seqs as muscle_aln
@@ -899,20 +903,7 @@ def main():
     
     summary_file.close()
     
-def make_dists_and_tree(potu_table_fp, host_tree_fp):
-    from cogent.app.muscle import align_unaligned_seqs as muscle_aln
-    from cogent.app.fasttree import build_tree_from_alignment as fasttree_build_tree
-    from cogent.core.tree import PhyloNode
-    from cogent import LoadTree, LoadSeqs, DNA
-    from cogent.parse.tree import DndParser
-    import re
-    import numpy
-    import StringIO
-    from qiime.summarize_otu_by_cat import summarize_by_cat
-    from qiime.parse import parse_otu_table
-    from cogent.phylo import distance, nj
-    from cogent.evolve.models import HKY85
-    
+def make_dists_and_tree(sample_names, host_fp):
     """
     This routine reads in your host information (tree, alignment, or distance 
     matrix) and converts it to a distance matrix and a tree. These are subsetted
@@ -927,75 +918,44 @@ def make_dists_and_tree(potu_table_fp, host_tree_fp):
     
     Make this so that it writes all the files in the output directory for ref.
     """
-    
-    #Open Parent OTU table
+    """
+    # Open Parent OTU table
     try:
         potu_file = open(potu_table_fp, 'Ur')
     except:
         print "is this a real file?" + potu_table_fp
     
-    #parse pOTU table to grab sample names
+    # parse pOTU table to grab sample names
     try:
         sample_names, taxon_names, data, lineages = parse_otu_table(potu_file)
     except:
         print "Problem opening pOTU table. Not a valid OTU table?"
+    """
+    # Attempt to parse the host tree/alignment/distance matrix
+    if isTree(host_fp):
+        host_tree, host_dist = processTree(host_fp)
+        print "Input is tree"
+
+    elif isAlignment(host_fp):
+        host_tree, host_dist = processAlignment(host_fp)
+        print "Input is alignment"
+
+    elif isMatrix(host_fp):
+        host_tree, host_dist = processMatrix(host_fp)
+        print "Input is distance matrix"
+
+    else:
+        print "Host information file could not be parsed"
+                   
+    # Remove any sample names not in host tree
+    sample_names = filter(lambda x: x if x in host_tree.getTipNames() else None, sample_names)     
+           
+    # Get host subtree and filter distance matrix so they only include samples present in the pOTU table
+    host_tree = host_tree.getSubTree(sample_names)
     
-    #Initialize host distances dictionary
-    host_dist = {}
+    host_dist = filter_samples_from_distance_matrix(host_dist,sample_names,negate=True)
     
-    #Attempt to parse the host tree/alignment/distance matrix
-    try:
-        #Attempt to load input as tree
-        host_supertree = LoadTree(host_tree_fp)
-        #remove samples from sample_names that aren't present in supertree
-        for x in reversed(range(len(sample_names))):
-        #is sample name in supplied host tree?
-            if sample_names[x] not in host_supertree.getTipNames():
-                del sample_names[x]
-        #Trim host supertree
-        host_tree = host_supertree.getSubTree(sample_names)
-        host_dist = host_tree.getDistances()
-        print "Input is a tree"
-    
-    except Exception as e:
-        print "Input is not a tree " 
-        print e
-        #Attempt to load input as alignment
-        try:
-            al = LoadSeqs(host_tree_fp)
-            d = distance.EstimateDistances(al, submodel= HKY85())
-            d.run(show_progress=False)
-            host_dist = d.getPairwiseDistances()
-            #Delete any distances involving samples not in the pOTU table
-            for key in host_dist.keys():
-                if key[0] not in sample_names or key[1] not in sample_names:
-                    del host_dist[key]
-            #generate tree  
-            host_tree = nj.nj(host_dist)
-            print "Input is a set of sequence alignments"
-        except:
-            print "Input is not aligned sequences"
-            #Attempt to load input as pairwise distances
-            try:
-                dFile = open(host_tree_fp, 'r')
-                dists = dFile.readlines()
-                #convert input matrix to array and list
-                names, matrix = parse_distmat(dists)
-                #Loop through matrix. If both sample names exist, convert to a pairwise distance and add to the dictionary
-                for i, item in enumerate(matrix):
-                    for j, itemtwo in enumerate(matrix[i]):
-                        if i != j:
-                            if names[i] in sample_names:
-                                if names[j] in sample_names:
-                                    host_dist[(names[i], names[j])]  = matrix[i][j]
-                #generate tree from distance matrix
-                host_tree = nj.nj(host_dist)
-                print "Input is a distance matrix"
-            except Exception as e:
-                print "Input is not a distance matrix"
-                print e
-                print "Input could not be parsed!"
-            
+    """
     newPath = host_tree_fp.split('.')[0] + '_filtered.tre'
     
     #Write modified host tree to file. Get rid of single quotes -- is there a
@@ -1016,8 +976,142 @@ def make_dists_and_tree(potu_table_fp, host_tree_fp):
     
     except Exception as e:
         print e
+    """
+    return host_tree, host_dist
+    
+# This function is copied directly from QIIME except it returns a native distance matrix instead of formatting it
+def filter_samples_from_distance_matrix(dm,samples_to_discard,negate=False):
+    from numpy import array, inf
+    """ Remove specified samples from distance matrix 
+    
+        dm: (sample_ids, dm_data) tuple, as returned from 
+         qiime.parse.parse_distmat; or a file handle that can be passed
+         to qiime.parse.parse_distmat
+    
+    """
+    try:
+        sample_ids, dm_data = dm
+    except ValueError:
+        # input was provide as a file handle
+        sample_ids, dm_data = parse_distmat(dm)
+    
+    sample_lookup = {}.fromkeys([e.split()[0] for e in samples_to_discard])
+    temp_dm_data = []
+    new_dm_data = []
+    new_sample_ids = []
+    
+    if negate:
+        def keep_sample(s):
+            return s in sample_lookup
+    else:
+        def keep_sample(s):
+            return s not in sample_lookup
+            
+    for row,sample_id in zip(dm_data,sample_ids):
+        if keep_sample(sample_id):
+            temp_dm_data.append(row)
+            new_sample_ids.append(sample_id)
+    temp_dm_data = array(temp_dm_data).transpose()
+    
+    for col,sample_id in zip(temp_dm_data,sample_ids):
+        if keep_sample(sample_id):
+            new_dm_data.append(col)
+    new_dm_data = array(new_dm_data).transpose()
+    
+    return (new_sample_ids, new_dm_data)
+    
+ def cogent_dist_to_qiime_dist(dist_tuple_dict):
+    """
+    This takes a dict with tuple keys and distance values, such as is output
+    by the getDistances() method of a PhyloNode object, and converts it to a
+    QIIME-style distance matrix object: a tuple with a list of samples in [1]
+    and a numpy array of the distance matrix in [2].
+    """
+    from StringIO import StringIO
+    from qiime.parse import parse_distmat
+    from cogent.util.dict2d import Dict2D
+
+    headers = []
+    dist_dict = {}
+
+    # loop through dist_tuple_dict, returning (k1,k2):v tuples simultaneously
+    for item in dist_tuple_dict.iteritems():
+        if item[0][0] not in headers: # if k1 is not in headers, add it to headers
+            headers.append(item[0][0])
+            dist_dict[item[0][0]] = {item[0][0]: 0.0} # null distance between object and itself
+
+        dist_dict[item[0][0]][item[0][1]] = item[1] # dist_dict[k1][k2] = v
+
+    # Initialize dict2d, with data from dist_dict (dict of dicts).
+    # Also, RowOrder and ColOrder are set to the order of the headers list.
+    # NOTE: no longer using the fromDicts() method to pass dist_dict to dict2d
+    dict2d = Dict2D(dist_dict, headers, headers)
+
+    # output tab-delimited printable string of the items in dict2d including headers.
+    dist_delim = dict2d.toDelimited()
+
+    # generate and return Qiime distance matrix
+    return parse_distmat(StringIO(dist_delim[1:]))
+
+def isTree(fp):
+    try:
+        LoadTree(fp)
+        return True
+    except:
+        return False
+
+def isAlignment(fp):
+    try:
+        LoadSeqs(fp)
+        return True
+    except:
+        return False
+
+def isMatrix(fp):
+    try:
+        dFile = open(host_tree_fp, 'r')
+        parse_distmat(dFile.readlines())
+        return True
+    except:
+        return False
+
+def processTree(fp):
+    # Attempt to load input as tree
+    host_tree = LoadTree(fp)
+    host_dist = cogent_dist_to_qiime_dist(host_tree.getDistances())
     return host_tree, host_dist
 
+def processAlignment(fp):
+    # load sequences and estimate distance matrix
+    al = LoadSeqs(fp)
+    d = distance.EstimateDistances(al, submodel= HKY85())
+    d.run(show_progress=False)
+    host_dist = cogent_dist_to_qiime_dist(d.getPairwiseDistances())
+
+    # generate tree from matrix 
+    host_tree = distmat_to_tree(host_dist)
+    return host_tree, host_dist
+
+def processMatrix(fp):
+    dFile = open(fp, 'r')
+    dists = dFile.readlines()
+    # Parse distance matrix and build tree
+    host_dist = parse_distmat(dists)
+    host_tree = distmat_to_tree(host_dist)
+    return host_tree, host_dist
+
+
+def distmat_to_tree(distmat):
+    dist_headers, dist_matrix = distmat
+    cogent_host_dist = {}
+    # Loop through host distance matrix to create a dictionary of pairwise distances
+    for i, item in enumerate(dist_matrix):
+        for j, itemtwo in enumerate(dist_matrix[i]):
+            if i != j:
+                cogent_host_dist[(dist_headers[i], dist_headers[j])]  = dist_matrix[i][j]
+    # Generate tree from distance matrix
+    return nj.nj(cogent_host_dist)
+               
 if __name__ == "__main__":
     main()
 
