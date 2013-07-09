@@ -287,11 +287,14 @@ def cogent_dist_to_qiime_dist(dist_tuple_dict):
     """
     This takes a dict with tuple keys and distance values, such as is output
     by the getDistances() method of a PhyloNode object, and converts it to a 
-    QIIME-style distance matrix object: a tuple with a list of samples in [1] 
-    and a numpy array of the distance matrix in [2].
+    QIIME-style distance matrix object: an ordered tuple with a list of samples
+    in [0] and a numpy array of the distance matrix in [1].
 
-    UPDATED 2013-07-09 Aaron Behr
+    EDITED AND UPDATED 2013-07-09 Aaron Behr
     """
+    from StringIO import StringIO
+    from qiime.parse import parse_distmat
+    from cogent.util.dict2d import Dict2D
 
     headers = []
     dist_dict = {}
@@ -303,9 +306,10 @@ def cogent_dist_to_qiime_dist(dist_tuple_dict):
             dist_dict[item[0][0]] = {item[0][0]: 0.0} # null self-distance
             
         dist_dict[item[0][0]][item[0][1]] = item[1] # dist_dict[k1][k2] = v
-
+    headers.sort()
+    
     # Initialize dict2d, with data from dist_dict (dict of dicts).
-    # Also, RowOrder and ColOrder are set to the order of the headers list.
+    # Also, RowOrder and ColOrder are set to the order of the sorted headers.
     # NOTE: no longer using the fromDicts() method to pass dist_dict to dict2d
     dict2d = Dict2D(dist_dict, headers, headers)
 

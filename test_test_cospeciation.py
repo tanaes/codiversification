@@ -81,30 +81,17 @@ sequences to remove"""
 
 
     def test_cogent_dist_to_qiime_dist(self):
-        """Tests cogent_dist_to_qiime_dist() in dist_convert.py.
-        
-        1)  An actual output Qiime distance matrix is generated,
-            using the input data.
-        2)  An expected output matrix is generated. The header row
-            from the output matrix is used to populate the output
-            matrix in proper order.
-        3)  The actual and expected numpy array objects are compared.
-
-        Note that the actual output qiime distance matrix in its entirety
-        is not analyzed. This would be redundant since its header row is
-        used to generate the expected output.
-        """
 
         input_dict = {('a','b'): 4, ('a','c'): 5, ('a','d'): 6,
             ('b','a'): 4, ('b','c'): 7, ('b','d'): 8,
             ('c','a'): 5, ('c','b'): 7, ('c','d'): 9,
             ('d','a'): 6, ('d','b'): 8,('d','c'): 9}
         
-        # Run actual method
+        # RUN METHOD TO BE TESTED
         actual_output = cogent_dist_to_qiime_dist(input_dict)
 
         # Generate expected output
-        matrix_order = actual_output[0] # get matrix order from actual output
+        matrix_order = ['a','b','c','d']
         expected_output = []
         for x in matrix_order:
             row = []
@@ -116,9 +103,9 @@ sequences to remove"""
                     # input tuple dist dict doesn't store the null self-distances
                     row.append(0.)  
             expected_output.append(row)
-        expected_output = numpy.array(expected_output) 
+        expected_output = (matrix_order, numpy.array(expected_output))
 
-        self.assertEqual(actual_output[1], expected_output)
+        self.assertEqual(actual_output, expected_output)
 
         
 
