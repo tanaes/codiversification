@@ -24,6 +24,12 @@ from cogent.parse.tree import DndParser
 from qiime.filter import filter_samples_from_otu_table
 from cogent.core.tree import PhyloNode
 
+# the following 3 imports added 2013-07-09 by Aaron Behr
+# for method cogent_dist_to_qiime_dist 
+from StringIO import StringIO
+from qiime.parse import parse_distmat
+from cogent.util.dict2d import Dict2D
+
 """
 from cogent.app.muscle import align_unaligned_seqs as muscle_aln
 from cogent.app.fasttree import build_tree_from_alignment as fasttree_build_tree
@@ -275,7 +281,39 @@ def dist2Dict2D(dist_dict,sample_names):
     #pause = raw_input("pause")
     
     return dict2d
-    
+
+
+def cogent_dist_to_qiime_dist(dist_tuple_dict):
+    """
+    This takes a dict with tuple keys and distance values, such as is output
+    by the getDistances() method of a PhyloNode object, and converts it to a 
+    QIIME-style distance matrix object: a tuple with a list of samples in [1] 
+    and a numpy array of the distance matrix in [2].
+
+    UPDATED 2013-07-09 Aaron Behr
+    """
+
+    headers = []
+    dist_dict = {}
+
+    # loop through dist_tuple_dict, returning (k1,k2):v tuples simultaneously
+    for item in dist_tuple_dict.iteritems():
+        if item[0][0] not in headers: # if k1 is not in headers, add it to headers
+            headers.append(item[0][0])
+            dist_dict[item[0][0]] = {item[0][0]: 0.0} # null self-distance
+            
+        dist_dict[item[0][0]][item[0][1]] = item[1] # dist_dict[k1][k2] = v
+
+    # Initialize dict2d, with data from dist_dict (dict of dicts).
+    # Also, RowOrder and ColOrder are set to the order of the headers list.
+    # NOTE: no longer using the fromDicts() method to pass dist_dict to dict2d
+    dict2d = Dict2D(dist_dict, headers, headers)
+
+    # output tab-delimited printable string of the items in dict2d including headers.    
+    dist_delim = dict2d.toDelimited() 
+
+    # generate and return Qiime distance matrix
+    return parse_distmat(StringIO(dist_delim[1:]))
 
 
 def recursive_hommola(aligned_otu_seqs,host_subtree,host_dist,otu_tree,sample_names,
