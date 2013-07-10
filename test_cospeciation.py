@@ -1024,7 +1024,7 @@ def filter_samples_from_distance_matrix(dm,samples_to_discard,negate=False):
     
     return (new_sample_ids, new_dm_data)
     
- def cogent_dist_to_qiime_dist(dist_tuple_dict):
+def cogent_dist_to_qiime_dist(dist_tuple_dict):
     """
     This takes a dict with tuple keys and distance values, such as is output
     by the getDistances() method of a PhyloNode object, and converts it to a
