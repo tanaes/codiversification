@@ -931,17 +931,21 @@ def make_dists_and_tree(sample_names, host_fp):
     except:
         print "Problem opening pOTU table. Not a valid OTU table?"
     """
+    hostf = open(host_fp, 'r')
+    host_str = hostf.read()
+    hostf.close()
+    
     # Attempt to parse the host tree/alignment/distance matrix
-    if isTree(host_fp):
-        host_tree, host_dist = processTree(host_fp)
+    if isTree(host_str):
+        host_tree, host_dist = processTree(host_str)
         print "Input is tree"
 
-    elif isAlignment(host_fp):
-        host_tree, host_dist = processAlignment(host_fp)
+    elif isAlignment(host_str):
+        host_tree, host_dist = processAlignment(host_str)
         print "Input is alignment"
 
-    elif isMatrix(host_fp):
-        host_tree, host_dist = processMatrix(host_fp)
+    elif isMatrix(host_str):
+        host_tree, host_dist = processMatrix(host_str)
         print "Input is distance matrix"
 
     else:
@@ -1053,37 +1057,36 @@ def filter_samples_from_distance_matrix(dm,samples_to_discard,negate=False):
     # generate and return Qiime distance matrix
     return parse_distmat(StringIO(dist_delim[1:]))
 
-def isTree(fp):
+def isTree(fstr):
     try:
-        LoadTree(fp)
+        LoadTree(data=fstr)
         return True
     except:
         return False
 
-def isAlignment(fp):
+def isAlignment(fstr):
     try:
-        LoadSeqs(fp)
+        LoadSeqs(data=fstr)
         return True
     except:
         return False
 
-def isMatrix(fp):
+def isMatrix(fstr):
     try:
-        dFile = open(host_tree_fp, 'r')
-        parse_distmat(dFile.readlines())
+        parse_distmat(fstr.splitlines())
         return True
     except:
         return False
 
-def processTree(fp):
+def processTree(fstr):
     # Attempt to load input as tree
-    host_tree = LoadTree(fp)
+    host_tree = LoadTree(data=fstr)
     host_dist = cogent_dist_to_qiime_dist(host_tree.getDistances())
     return host_tree, host_dist
 
-def processAlignment(fp):
+def processAlignment(fstr):
     # load sequences and estimate distance matrix
-    al = LoadSeqs(fp)
+    al = LoadSeqs(data=fstr)
     d = distance.EstimateDistances(al, submodel= HKY85())
     d.run(show_progress=False)
     host_dist = cogent_dist_to_qiime_dist(d.getPairwiseDistances())
@@ -1092,9 +1095,8 @@ def processAlignment(fp):
     host_tree = distmat_to_tree(host_dist)
     return host_tree, host_dist
 
-def processMatrix(fp):
-    dFile = open(fp, 'r')
-    dists = dFile.readlines()
+def processMatrix(fstr):
+    dists = fstr.splitlines()
     # Parse distance matrix and build tree
     host_dist = parse_distmat(dists)
     host_tree = distmat_to_tree(host_dist)
