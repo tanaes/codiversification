@@ -1033,7 +1033,7 @@ def cogent_dist_to_qiime_dist(dist_tuple_dict):
     """
     from StringIO import StringIO
     from qiime.parse import parse_distmat
-    from cogent.util.dict2d import Dict2D
+    from cogent.util.dict2d import Dict2D, largest
 
     headers = []
     dist_dict = {}
@@ -1050,7 +1050,9 @@ def cogent_dist_to_qiime_dist(dist_tuple_dict):
     # Also, RowOrder and ColOrder are set to the order of the headers list.
     # NOTE: no longer using the fromDicts() method to pass dist_dict to dict2d
     dict2d = Dict2D(dist_dict, headers, headers)
-
+    
+    #reflect dict2d so that it is no longer sparse
+    dict2d.reflect(largest)
     # output tab-delimited printable string of the items in dict2d including headers.
     dist_delim = dict2d.toDelimited()
 
@@ -1059,7 +1061,7 @@ def cogent_dist_to_qiime_dist(dist_tuple_dict):
 
 def isTree(fstr):
     try:
-        LoadTree(data=fstr)
+        LoadTree(treestring=fstr)
         return True
     except:
         return False
@@ -1073,14 +1075,17 @@ def isAlignment(fstr):
 
 def isMatrix(fstr):
     try:
-        parse_distmat(fstr.splitlines())
-        return True
+        result = parse_distmat(fstr.splitlines())
+        if result[0] == None:
+            return False
+        else:
+            return True
     except:
         return False
 
 def processTree(fstr):
     # Attempt to load input as tree
-    host_tree = LoadTree(data=fstr)
+    host_tree = LoadTree(treestring=fstr)
     host_dist = cogent_dist_to_qiime_dist(host_tree.getDistances())
     return host_tree, host_dist
 
