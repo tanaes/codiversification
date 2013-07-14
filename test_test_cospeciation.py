@@ -20,6 +20,11 @@ import shutil
 from qiime.filter_otus_by_sample import (filter_otus,filter_aln_by_otus,\
                                  process_extract_samples)
 
+# the following import added 2013-07-09 by Aaron Behr
+# for method test_cogent_dist_to_qiime_dist 
+from test_cospeciation import *
+
+
 class TopLevelTests(TestCase):
     """Tests of top-level functions"""
 
@@ -73,6 +78,35 @@ sequences to remove"""
 
         self.assertEqual(obs1,exp1)
         self.assertEqual(obs2,exp2)
+
+
+    def test_cogent_dist_to_qiime_dist(self):
+
+        input_dict = {('a','b'): 4, ('a','c'): 5, ('a','d'): 6,
+            ('b','a'): 4, ('b','c'): 7, ('b','d'): 8,
+            ('c','a'): 5, ('c','b'): 7, ('c','d'): 9,
+            ('d','a'): 6, ('d','b'): 8,('d','c'): 9}
+        
+        # RUN METHOD TO BE TESTED
+        actual_output = cogent_dist_to_qiime_dist(input_dict)
+
+        # Generate expected output
+        matrix_order = ['a','b','c','d']
+        expected_output = []
+        for x in matrix_order:
+            row = []
+            for y in matrix_order:
+                if x != y:
+                    # use input tuple dist dict to populate expected output matrix
+                    row.append(input_dict[x,y])
+                else:
+                    # input tuple dist dict doesn't store the null self-distances
+                    row.append(0.)  
+            expected_output.append(row)
+        expected_output = (matrix_order, numpy.array(expected_output))
+
+        self.assertEqual(actual_output, expected_output)
+
         
 
 #run tests if called from command line
