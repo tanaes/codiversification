@@ -82,5 +82,7 @@ TO DO:
 • Change DM handling: handle all DMs as native qiime DMs; 
 	convert to qiime dm from cogent get_distances immediately.
 	use qiime filter dm for dm filtering
+		
+		- need a way to convert cogent distance to qiime tuples (samples, [matrix]
 
 • 

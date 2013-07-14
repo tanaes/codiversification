@@ -276,7 +276,68 @@ def dist2Dict2D(dist_dict,sample_names):
     
     return dict2d
     
+def cogent_dist_to_qiime_dist(dist_tuple_dict):
+    """
+    This takes a dict with tuple keys and distance values, such as is output
+    by the getDistances() method of a PhyloNode object, and converts it to a 
+    QIIME-style distance matrix object: a tuple with a list of samples in [1] 
+    and a numpy array of the distance matrix in [2].
+    """
+    from StringIO import StringIO
+    from qiime.parse import parse_distmat
+    from cogent.util.dict2d import Dict2D
+    
+    headers = []
+    dist_dict = {}
+    for item in dist_tuple_dict.iteritems():
+        
+        if item[0][0] not in headers:
+            headers.append(item[0][0])
+            
+            dist_dict[item[0][0]] = {item[0][0]: 0.0}
+            dist_dict[item[0][0]][item[0][1]] = item[1]
+        else:
+            dist_dict[item[0][0]][item[0][1]] = item[1]
+    
+    dict2d = Dict2D()
+    dict2d.fromDicts(dist_dict)
+    dist_delim = dict2d.toDelimited(headers=True)
+    qiime_distmat = parse_distmat(StringIO(dist_delim[1:]))
+    
+    return qiime_distmat
 
+
+"""
+dist_tuple_dict = {('SHAJ', 'SHAK'): 0.10750048520885,
+ ('SHAJ', 'SHAM'): 0.10750048520885,
+ ('SHAJ', 'SHOA'): 0.0147434146325,
+ ('SHAJ', 'SHOG'): 0.0147434146325,
+ ('SHAK', 'SHAJ'): 0.10750048520885,
+ ('SHAK', 'SHAM'): 0.048024926561999998,
+ ('SHAK', 'SHOA'): 0.10750048520885,
+ ('SHAK', 'SHOG'): 0.10750048520885,
+ ('SHAM', 'SHAJ'): 0.10750048520885,
+ ('SHAM', 'SHAK'): 0.048024926561999998,
+ ('SHAM', 'SHOA'): 0.10750048520885,
+ ('SHAM', 'SHOG'): 0.10750048520885,
+ ('SHOA', 'SHAJ'): 0.0147434146325,
+ ('SHOA', 'SHAK'): 0.10750048520885,
+ ('SHOA', 'SHAM'): 0.10750048520885,
+ ('SHOA', 'SHOG'): 0.0,
+ ('SHOG', 'SHAJ'): 0.0147434146325,
+ ('SHOG', 'SHAK'): 0.10750048520885,
+ ('SHOG', 'SHAM'): 0.10750048520885,
+ ('SHOG', 'SHOA'): 0.0}
+ 
+ 
+ qiime_distmat = (['SHOA', 'SHOG', 'SHAJ', 'SHAK', 'SHAM'],
+ array([[ 0.01474341,  0.01474341,  0.        ,  0.10750049,  0.10750049],
+       [ 0.        ,  0.        ,  0.01474341,  0.10750049,  0.10750049],
+       [ 0.10750049,  0.10750049,  0.10750049,  0.04802493,  0.        ],
+       [ 0.        ,  0.        ,  0.01474341,  0.10750049,  0.10750049],
+       [ 0.10750049,  0.10750049,  0.10750049,  0.        ,  0.04802493]]))
+ 
+"""
 
 def recursive_hommola(aligned_otu_seqs,host_subtree,host_dist,otu_tree,sample_names,
                         taxon_names,otu_data,permutations=1000):
@@ -935,10 +996,10 @@ def make_dists_and_tree(potu_table_fp, host_tree_fp):
         print "is this a real file?" + potu_table_fp
     
     #parse pOTU table to grab sample names
-    try:
-        sample_names, taxon_names, data, lineages = parse_otu_table(potu_file)
-    except:
-        print "Problem opening pOTU table. Not a valid OTU table?"
+    #try:
+    sample_names, taxon_names, data, lineages = parse_otu_table(potu_file)
+    #except:
+    #    print "Problem opening pOTU table. Not a valid OTU table?"
     
     #Initialize host distances dictionary
     host_dist = {}
