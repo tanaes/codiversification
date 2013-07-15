@@ -235,7 +235,6 @@ def get_dist(labels,dists,index):
     return vec
 
 
-
 def dist2Dict2D(dist_dict,sample_names):
     """This little routine takes distance calc outputs from Cogent and sticks 
     them into a Dict2D object."""
@@ -288,7 +287,7 @@ def cogent_dist_to_qiime_dist(dist_tuple_dict):
     """
     from StringIO import StringIO
     from qiime.parse import parse_distmat
-    from cogent.util.dict2d import Dict2D
+    from cogent.util.dict2d import Dict2D, largest
     
     headers = []
     dist_dict = {}
@@ -302,18 +301,19 @@ def cogent_dist_to_qiime_dist(dist_tuple_dict):
         dist_dict[item[0][0]][item[0][1]] = item[1] # dist_dict[k1][k2] = v
     headers.sort()
     
-    
     # Initialize dict2d, with data from dist_dict (dict of dicts).
     # Also, RowOrder and ColOrder are set to the order of the sorted headers.
     # NOTE: no longer using the fromDicts() method to pass dist_dict to dict2d
     dict2d = Dict2D(dist_dict, headers, headers)
+    
+    #reflect dict2d so that it is no longer sparse
+    dict2d.reflect(largest)
     
     # output tab-delimited printable string of the items in dict2d including headers.    
     dist_delim = dict2d.toDelimited() 
     
     # generate and return Qiime distance matrix
     return parse_distmat(StringIO(dist_delim[1:]))
-
 
 
 """
@@ -389,6 +389,13 @@ def recursive_hommola(aligned_otu_seqs,host_subtree,host_dm,otu_tree,sample_name
     #sdd = dist2Dict2D(otu_dists,taxon_names)
     #sdn = numpy.array(sdd.toLists())
     
+    print "got here"
+    
+    print host_dm
+    print sample_names
+    print otu_dm
+    print taxon_names
+    
     host_dm = sort_dm_by_sample(host_dm, sample_names)
     otu_dm = sort_dm_by_sample(otu_dm, taxon_names)
     
@@ -400,7 +407,7 @@ def recursive_hommola(aligned_otu_seqs,host_subtree,host_dm,otu_tree,sample_name
     
     #initialize our output lists
     s_nodes, h_nodes, p_vals, s_tips, h_tips, r_vals, r_distro_vals = [], [], [], [], [], [], []
-    
+    print "just before loop"
     #iterate over the tree of child OTUs
     for node in otu_tree.traverse(self_before=True, self_after=False):
         
@@ -621,8 +628,6 @@ def unifrac_recursive_test(ref_tree,tree,sample_names,
     acc_dict = {'lengths':lengths,'dists':dists,'sets':sets,'dist_below':dist_below}
     
     return (results_dict, acc_dict)
-    
-
 
 
 #This routine fixes a problem with OTU tables that don't have taxonomic information.
@@ -723,7 +728,7 @@ def run_test_cospeciation(basename,
         if test == 'hommola':
             
             #run recursive hommola test
-            results_dict, acc_dict = recursive_hommola(filtered_seqs, host_subtree, host_dist[1], otu_subtree,sample_names,
+            results_dict, acc_dict = recursive_hommola(filtered_seqs, host_subtree, host_dist, otu_subtree,sample_names,
              taxon_names,data,permutations)
             
             pvals = 'p_vals'
@@ -771,7 +776,7 @@ def run_test_cospeciation(basename,
         results_file.close()
         
         return True, sig_nodes, num_nodes
-    
+
 
 def make_dists_and_tree(sample_names, host_fp):
     """
@@ -872,8 +877,6 @@ def sort_dm_by_sample(dm,sample_names):
     sorted_dm = dm[1][numpy.ix_(name_slice, name_slice)]
     
     return (sample_names,sorted_dm)
-    
-
 
 
 def filter_dms(otu_dm,host_dm,interaction,otu_subset): 
@@ -918,42 +921,6 @@ def filter_dms(otu_dm,host_dm,interaction,otu_subset):
     
     return(sliced_otu_dm, sliced_host_dm, sliced_interaction)
 
-
-
-def cogent_dist_to_qiime_dist(dist_tuple_dict):
-    """
-    This takes a dict with tuple keys and distance values, such as is output
-    by the getDistances() method of a PhyloNode object, and converts it to a
-    QIIME-style distance matrix object: a tuple with a list of samples in [1]
-    and a numpy array of the distance matrix in [2].
-    """
-    from StringIO import StringIO
-    from qiime.parse import parse_distmat
-    from cogent.util.dict2d import Dict2D, largest
-    
-    headers = []
-    dist_dict = {}
-    
-    # loop through dist_tuple_dict, returning (k1,k2):v tuples simultaneously
-    for item in dist_tuple_dict.iteritems():
-        if item[0][0] not in headers: # if k1 is not in headers, add it to headers
-            headers.append(item[0][0])
-            dist_dict[item[0][0]] = {item[0][0]: 0.0} # null distance between object and itself
-    
-        dist_dict[item[0][0]][item[0][1]] = item[1] # dist_dict[k1][k2] = v
-    
-    # Initialize dict2d, with data from dist_dict (dict of dicts).
-    # Also, RowOrder and ColOrder are set to the order of the headers list.
-    # NOTE: no longer using the fromDicts() method to pass dist_dict to dict2d
-    dict2d = Dict2D(dist_dict, headers, headers)
-    
-    #reflect dict2d so that it is no longer sparse
-    dict2d.reflect(largest)
-    # output tab-delimited printable string of the items in dict2d including headers.
-    dist_delim = dict2d.toDelimited()
-    
-    # generate and return Qiime distance matrix
-    return parse_distmat(StringIO(dist_delim[1:]))
 
 def isTree(fstr):
     
@@ -1144,9 +1111,9 @@ def main():
                 sample_names, taxon_names, data, lineages = parse_otu_table(filtered_cotu_table)
                 
                 #exit loop if less than three hosts or cOTUs
-                #if len(sample_names) < 3 or len(taxon_names) < 3:
-                #    print "Less than 3 hosts or cOTUs in cOTU table!"
-                #    continue
+                if len(sample_names) < 3 or len(taxon_names) < 3:
+                    print "Less than 3 hosts or cOTUs in cOTU table!"
+                    continue
                 
                 #filter host and cOTU trees
                 host_subtree = host_tree.getSubTree(sample_names)
@@ -1176,7 +1143,7 @@ def main():
                      basename=basename,
                      host_tree=host_tree,
                      host_subtree=host_subtree,
-                     host_dist=host_dist.copy(),
+                     host_dist=host_dist,
                      otu_subtree=otu_subtree,
                      sample_names=sample_names,
                      taxon_names=taxon_names,
