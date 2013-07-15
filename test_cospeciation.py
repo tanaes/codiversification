@@ -165,6 +165,8 @@ def hommola_cospeciation_test(host_dist, par_dist, matrix, permutations):
     import cogent.maths.stats.test as stats
     from random import shuffle
     import numpy
+    #for testing
+    import math
     
     m = matrix.sum()
     
@@ -213,6 +215,9 @@ def hommola_cospeciation_test(host_dist, par_dist, matrix, permutations):
         perm_stats.append(r_p)
         if r_p >= r:
             below += 1
+    
+    #print "Below: " + str(below)
+    #print "Pemutations: " + str(permutations)
     
     p_val = float(below+1)/float(permutations+1)
     
@@ -370,7 +375,7 @@ def recursive_hommola(aligned_otu_seqs,host_subtree,host_dm,otu_tree,sample_name
     from cogent.util.dict2d import Dict2D
     import numpy
     
-    print "Performing recursive Hommola et al cospeciation test..." 
+    #print "Performing recursive Hommola et al cospeciation test..." 
     
     #calculate pairise distances between OTUs
     
@@ -389,7 +394,7 @@ def recursive_hommola(aligned_otu_seqs,host_subtree,host_dm,otu_tree,sample_name
     #sdd = dist2Dict2D(otu_dists,taxon_names)
     #sdn = numpy.array(sdd.toLists())
     
-    print "got here"
+    #print "got here"
     
     #print host_dm
     #print sample_names
@@ -407,7 +412,7 @@ def recursive_hommola(aligned_otu_seqs,host_subtree,host_dm,otu_tree,sample_name
     
     #initialize our output lists
     s_nodes, h_nodes, p_vals, s_tips, h_tips, r_vals, r_distro_vals = [], [], [], [], [], [], []
-    print "just before loop"
+    #print "just before loop"
     #iterate over the tree of child OTUs
     for node in otu_tree.traverse(self_before=True, self_after=False):
         
@@ -419,7 +424,8 @@ def recursive_hommola(aligned_otu_seqs,host_subtree,host_dm,otu_tree,sample_name
          filter_dms(otu_dm,host_dm,interaction,otu_subset)
         
         #Make sure we have at least 3 hosts and symbionts represented
-        if len(host_dm_sub[0]) > 2 and len(otu_dm_sub[0]) > 2:
+        if len(host_dm_sub[0]) > 2 and len(otu_dm_sub[0]) > 2 \
+          and host_dm_sub[1].sum() != 0 and otu_dm_sub[1].sum() != 0:
             
             #print node.asciiArt()
             
@@ -462,10 +468,11 @@ def recursive_hommola(aligned_otu_seqs,host_subtree,host_dm,otu_tree,sample_name
             pause = raw_input("")
     """
     
-    print "finished recursive Hommola"
+    #print "finished recursive Hommola"
     
     results_dict = {'p_vals':p_vals,'s_tips':s_tips,'h_tips':h_tips,'s_nodes':s_nodes,'h_nodes':h_nodes}
-    acc_dict = {'r_vals':r_vals, 'r_distro_vals':r_distro_vals}
+    acc_dict = {'r_vals':r_vals}
+    #suppressed: return the distribution of r values 'r_distro_vals':r_distro_vals
     return (results_dict, acc_dict)
 
 
@@ -511,7 +518,7 @@ def unifrac_recursive_test(ref_tree,tree,sample_names,
     lengths,dists,sets,s_nodes,h_nodes,dist_below,sets_below, h_tips, s_tips = [],[],[],[],[],[],[], [], []
     
     #Permute host tips, store permuted trees in a list of tree strings
-    print "Permuting host tree..."
+    #print "Permuting host tree..."
     
     permuted_trees = []
     host_names = ref_tree.getTipNames()
@@ -537,7 +544,7 @@ def unifrac_recursive_test(ref_tree,tree,sample_names,
     envs = make_envs_dict(data.T, sample_names, taxon_names)
     
     #Pass host tree, new OTU tree, and envs to recursive unifrac
-    print "Performing recursive Unifrac analysis..."
+    #print "Performing recursive Unifrac analysis..."
     
     for node in tree.traverse(self_before=True, self_after=False):
         
@@ -755,6 +762,9 @@ def run_test_cospeciation(basename,
         for pval in results_dict[pvals]:
             if pval < significance_level:
                 sig_nodes += 1
+        
+        #print results_dict
+        #print acc_dict
         
         results_file = open(output_dir + '/' + basename + '_results.txt', 'w')
         
@@ -1014,6 +1024,34 @@ def distmat_to_tree(distmat):
     
     return nj.nj(cogent_host_dist)
 
+def filter_otu_table_by_min(sample_names, taxon_names, data, lineages, min=1):
+    #loop through and remove every otu present at less than min
+    #this should be replaced by native QIIME filter code.
+    s_vec = []
+    s_names = []
+    taxonomies = []
+    
+    #create list of OTUs to keep
+    for otu in range(data.shape[0]):
+        if data[otu,:].sum() >= min:
+            s_vec.append(otu)
+            s_names.append(taxon_names[otu])
+            if lineages:
+                taxonomies.append(lineages[otu])
+    
+    h_vec = []
+    h_names = []
+    
+    for sample in range(data.shape[1]):
+        if data[numpy.ix_(s_vec),sample].sum() >= 1:
+            h_vec.append(sample)
+            h_names.append(sample_names[sample])
+    
+    #slice data 
+    data = data[numpy.ix_(s_vec,h_vec)]
+    
+    return h_names,s_names,data,taxonomies
+
 
 
 
@@ -1129,10 +1167,20 @@ def main():
                                   host_dist[0],\
                                   negate=True)
                 
+                
                 ###Now the cOTU table only has the samples present in the host dm
                 
                 #parse the filtered cOTU table
                 sample_names, taxon_names, data, lineages = parse_otu_table(filtered_cotu_table)
+                
+                #filter cOTU table again because skip_empty doesn't seem to be 
+                #working in format_otu_table called from 
+                #filter_samples_from_otu_table
+                
+                sample_names, taxon_names, data, lineages = filter_otu_table_by_min( sample_names, taxon_names, data, lineages, min=1)
+                
+                #print "Filtered cOTU table:"
+                #print data
                 
                 #exit loop if less than three hosts or cOTUs
                 if len(sample_names) < 3 or len(taxon_names) < 3:
@@ -1146,7 +1194,7 @@ def main():
                 #Filter the host_dists to match the newly trimmed subtree
                 #Note: this is requiring the modified filter_dist method which 
                 #returns a native dm tuple rather than a string.
-                host_dist = filter_samples_from_distance_matrix(host_dist,sample_names,negate=True)
+                host_dist_filtered = filter_samples_from_distance_matrix(host_dist,sample_names,negate=True)
                 
                 #for key in host_dist.keys():
                 #    if key[0] not in sample_names or key[1] not in sample_names:
@@ -1167,7 +1215,7 @@ def main():
                      basename=basename,
                      host_tree=host_tree,
                      host_subtree=host_subtree,
-                     host_dist=host_dist,
+                     host_dist=host_dist_filtered,
                      otu_subtree=otu_subtree,
                      sample_names=sample_names,
                      taxon_names=taxon_names,
