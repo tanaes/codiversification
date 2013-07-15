@@ -118,7 +118,7 @@ make_option('-p','--potu_table_fp',\
  make_option('-o','--output_dir',\
             help='path to output directory [REQUIRED]'),\
  make_option('-T','--test',\
-            help='desired test (unifrac or hommola) [REQUIRED]'),\
+            help='desired test (unifrac, hommola, hommola_recursive) [REQUIRED]'),\
  make_option('-t','--taxonomy_fp',\
             help='parent OTU taxonomy filepath [REQUIRED]'),\
  make_option('-m','--mapping_fp',
@@ -349,7 +349,7 @@ dist_tuple_dict = {('SHAJ', 'SHAK'): 0.10750048520885,
 """
 
 def recursive_hommola(aligned_otu_seqs,host_subtree,host_dm,otu_tree,sample_names,
-                        taxon_names,otu_data,permutations=1000):
+                        taxon_names,otu_data,permutations=1000,recurse=False):
     """
     Applies Hommola et al test of cospeciation recursively to OTU tree.
     
@@ -391,10 +391,10 @@ def recursive_hommola(aligned_otu_seqs,host_subtree,host_dm,otu_tree,sample_name
     
     print "got here"
     
-    print host_dm
-    print sample_names
-    print otu_dm
-    print taxon_names
+    #print host_dm
+    #print sample_names
+    #print otu_dm
+    #print taxon_names
     
     host_dm = sort_dm_by_sample(host_dm, sample_names)
     otu_dm = sort_dm_by_sample(otu_dm, taxon_names)
@@ -421,6 +421,8 @@ def recursive_hommola(aligned_otu_seqs,host_subtree,host_dm,otu_tree,sample_name
         #Make sure we have at least 3 hosts and symbionts represented
         if len(host_dm_sub[0]) > 2 and len(otu_dm_sub[0]) > 2:
             
+            #print node.asciiArt()
+            
             #append symbiont nodes and host subtrees as tree objects
             s_nodes.append(node)
             h_nodes.append(host_subtree.getSubTree(host_dm_sub[0]))
@@ -438,6 +440,10 @@ def recursive_hommola(aligned_otu_seqs,host_subtree,host_dm,otu_tree,sample_name
             
             #print node.asciiArt()
             #print p
+        
+        #If only testing top-level node, break out of tree traverse.
+        if not recurse:
+            break
         #else:
         #   print "Less than three hosts"
         #   #s_nodes.append(node)
@@ -455,6 +461,8 @@ def recursive_hommola(aligned_otu_seqs,host_subtree,host_dm,otu_tree,sample_name
             print p_vals[i]
             pause = raw_input("")
     """
+    
+    print "finished recursive Hommola"
     
     results_dict = {'p_vals':p_vals,'s_tips':s_tips,'h_tips':h_tips,'s_nodes':s_nodes,'h_nodes':h_nodes}
     acc_dict = {'r_vals':r_vals, 'r_distro_vals':r_distro_vals}
@@ -725,14 +733,22 @@ def run_test_cospeciation(basename,
              taxon_names,data,permutations)
             pvals = 'p_vals'
         
+        if test == 'hommola_recursive':
+            
+            #run recursive hommola test
+            results_dict, acc_dict = recursive_hommola(filtered_seqs, host_subtree, host_dist, otu_subtree,sample_names,
+             taxon_names,data,permutations,recurse=True)
+            
+            pvals = 'p_vals'
+        
         if test == 'hommola':
             
             #run recursive hommola test
             results_dict, acc_dict = recursive_hommola(filtered_seqs, host_subtree, host_dist, otu_subtree,sample_names,
-             taxon_names,data,permutations)
+             taxon_names,data,permutations,recurse=False)
             
             pvals = 'p_vals'
-            
+        
         sig_nodes = 0
         
         #Count number of significant nodes
@@ -891,6 +907,7 @@ def filter_dms(otu_dm,host_dm,interaction,otu_subset):
     h_names = []
     s_names = []
     
+                                    
     #find positional index (from OTU table) for each cOTU represented in this node:
     for i in range(len(otu_dm[0])):
         if otu_dm[0][i] in otu_subset:
@@ -898,17 +915,24 @@ def filter_dms(otu_dm,host_dm,interaction,otu_subset):
             s_names.append(otu_dm[0][i])
     #slice symbiont distance matrix down to only cOTUs in this node 
     
+                    
     s_slice = otu_dm[1][numpy.ix_(s_vec,s_vec)]
     
+            
     #slice interaction matrix down to only cOTUs in this node
     i_s_slice = interaction[numpy.ix_(s_vec)]
     
+            
     #find positional index (this time from OTU table size) for each sample in this node:
     #sum all values in column for each host, if greater than zero, add that host position to h_vec
     for j in range(i_s_slice.shape[1]):
         if i_s_slice[:,j].sum():
             h_vec.append(j)
             h_names.append(host_dm[0][j])
+                    
+    #check to see that the host vector isn't empty
+    if len(h_vec) < 1:
+        return(([],[]),([],[]),([]))
     
     i_slice = interaction[numpy.ix_(s_vec,h_vec)]
     
@@ -1155,6 +1179,7 @@ def main():
                      permutations=permutations)
                 except Exception as e:
                     print e
+                    raise
                 if result:
                     outline = "{0}\t{1}\t{2}\t{3}".format(sig_nodes,num_nodes,cotu_basename,otu_to_taxonomy[cotu_basename]) + "\n"
                 else:
