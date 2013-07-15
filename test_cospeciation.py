@@ -13,8 +13,7 @@ __status__ = "Experimental"
 
 from qiime.util import make_option
 import os, sys
-from qiime.util import load_qiime_config, parse_command_line_parameters,\
- get_options_lookup, parse_otu_table
+from qiime.util import load_qiime_config, parse_command_line_parameters, get_options_lookup, parse_otu_table
 from qiime.parse import parse_qiime_parameters, parse_taxonomy, parse_distmat
 from cogent import LoadTree, LoadSeqs, DNA
 from qiime.summarize_otu_by_cat import summarize_by_cat
@@ -349,7 +348,7 @@ dist_tuple_dict = {('SHAJ', 'SHAK'): 0.10750048520885,
  
 """
 
-def recursive_hommola(aligned_otu_seqs,host_subtree,host_dist,otu_tree,sample_names,
+def recursive_hommola(aligned_otu_seqs,host_subtree,host_dm,otu_tree,sample_names,
                         taxon_names,otu_data,permutations=1000):
     """
     Applies Hommola et al test of cospeciation recursively to OTU tree.
@@ -364,15 +363,12 @@ def recursive_hommola(aligned_otu_seqs,host_subtree,host_dist,otu_tree,sample_na
     It returns a dictionary of the results, and an empty accessory dict.
     """
     
-    
-    
     from cogent.evolve.pairwise_distance import TN93Pair
     from cogent.maths.unifrac.fast_unifrac import fast_unifrac
     from cogent.parse.tree import DndParser
     from cogent.core.tree import PhyloNode, TreeError
     from cogent.util.dict2d import Dict2D
     import numpy
-    
     
     print "Performing recursive Hommola et al cospeciation test..." 
     
@@ -383,77 +379,55 @@ def recursive_hommola(aligned_otu_seqs,host_subtree,host_dist,otu_tree,sample_na
     
     otu_dists = dist_calc.getPairwiseDistances()
     
+    otu_dm = cogent_dist_to_qiime_dist(otu_dists)
+    
     #convert pw distances (and tree distances for hosts) to numpy arrays with same
     #column/row headings as host/OTU positions in OTU table numpy array.
     
+    #hdd = dist2Dict2D(host_dist,sample_names)
+    #hdn = numpy.array(hdd.toLists())
+    #sdd = dist2Dict2D(otu_dists,taxon_names)
+    #sdn = numpy.array(sdd.toLists())
     
-    hdd = dist2Dict2D(host_dist,sample_names)
-    hdn = numpy.array(hdd.toLists())
-    sdd = dist2Dict2D(otu_dists,taxon_names)
-    sdn = numpy.array(sdd.toLists())
+    host_dm = sort_dm_by_sample(host_dm, sample_names)
+    otu_dm = sort_dm_by_sample(otu_dm, taxon_names)
     
     #convert OTU table to binary array, throwing out all OTUs below a given thresh.
-    
     
     interaction = otu_data.clip(0,1)
     
     #traverse OTU tree and test each node
     
     #initialize our output lists
-    s_nodes, h_nodes, p_vals, s_tips, h_tips = [], [], [], [], []
-    
-    
-    #DEBUG!
-    #print hdn
-    #print sdn
+    s_nodes, h_nodes, p_vals, s_tips, h_tips, r_vals, r_distro_vals = [], [], [], [], [], [], []
     
     #iterate over the tree of child OTUs
     for node in otu_tree.traverse(self_before=True, self_after=False):
         
         #get just OTUs in this node
         otu_subset = node.getTipNames()
-        s_vec = []
-        h_vec = []
-        h_names = []
         
-        #find positional index (from OTU table) for each cOTU represented in this node:
-        for i in range(len(taxon_names)):
-            if taxon_names[i] in otu_subset:
-                s_vec.append(i)
-        #slice symbiont distance matrix down to only cOTUs in this node 
-        s_slice = sdn[numpy.ix_(s_vec,s_vec)]
-        
-        #slice interaction matrix down to only cOTUs in this node
-        i_s_slice = interaction[numpy.ix_(s_vec)]
-        
-        #find positional index (this time from OTU table size) for each sample in this node:
-        #sum all values in column for each host, if greater than zero, add that host position to h_vec
-        for j in range(i_s_slice.shape[1]):
-            if i_s_slice[:,j].sum():
-                h_vec.append(j)
-                h_names.append(sample_names[j])
-        
-        
+        #subset dms and interaction matrix to just this node
+        otu_dm_sub, host_dm_sub, interaction_sub = \
+         filter_dms(otu_dm,host_dm,interaction,otu_subset)
         
         #Make sure we have at least 3 hosts and symbionts represented
-        if len(h_vec) > 2 and len(s_vec) > 2:
-            #slice interaction matrix
-            i_slice = interaction[numpy.ix_(s_vec,h_vec)]
-            
-            #slice host distance matrix
-            h_slice = hdn[numpy.ix_(h_vec,h_vec)]
+        if len(host_dm_sub[0]) > 2 and len(otu_dm_sub[0]) > 2:
             
             #append symbiont nodes and host subtrees as tree objects
             s_nodes.append(node)
-            h_nodes.append(host_subtree.getSubTree(h_names))
+            h_nodes.append(host_subtree.getSubTree(host_dm_sub[0]))
             
             #append number of symbionts and hosts for this node
-            s_tips.append(len(s_vec))
-            h_tips.append(len(h_vec))
+            s_tips.append(len(otu_dm_sub[0]))
+            h_tips.append(len(host_dm_sub[0]))
             #calculate pemutation p value for hommola test for this node
-            p = hommola_cospeciation_test(h_slice, s_slice, i_slice, permutations)
+            p, r, r_distro = hommola_cospeciation_test(host_dm_sub[1], otu_dm_sub[1], \
+             interaction_sub, permutations)
             #append to results list
             p_vals.append(p)
+            r_vals.append(r)
+            r_distro_vals.append(r_distro)
             
             #print node.asciiArt()
             #print p
@@ -474,19 +448,11 @@ def recursive_hommola(aligned_otu_seqs,host_subtree,host_dist,otu_tree,sample_na
             print p_vals[i]
             pause = raw_input("")
     """
+    
     results_dict = {'p_vals':p_vals,'s_tips':s_tips,'h_tips':h_tips,'s_nodes':s_nodes,'h_nodes':h_nodes}
-    acc_dict = {}
+    acc_dict = {'r_vals':r_vals, 'r_distro_vals':r_distro_vals}
     return (results_dict, acc_dict)
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+
 
 def unifrac_recursive_test(ref_tree,tree,sample_names,
                         taxon_names,data,permutations=1000):#, metric=weighted):
@@ -728,8 +694,6 @@ def run_test_cospeciation(basename,
     #DEBUG:
     #print 'in run_test_cospeciation'
     
-    
-    
     #get number of hosts and cOTUs
     htips = len(host_subtree.getTipNames())
     stips = len(otu_subtree.getTipNames())
@@ -746,6 +710,7 @@ def run_test_cospeciation(basename,
         print "Host or cOTU tree has less than three tips! "
         
         return True,sig_nodes,num_nodes
+    
     else:
         #DEBUG:
         #print "in test else"
@@ -757,16 +722,13 @@ def run_test_cospeciation(basename,
         
         if test == 'hommola':
             
-            
-            
             #run recursive hommola test
-            results_dict, acc_dict = recursive_hommola(filtered_seqs, host_subtree, host_dist, otu_subtree,sample_names,
+            results_dict, acc_dict = recursive_hommola(filtered_seqs, host_subtree, host_dist[1], otu_subtree,sample_names,
              taxon_names,data,permutations)
             
             pvals = 'p_vals'
             
         sig_nodes = 0
-        
         
         #Count number of significant nodes
         for pval in results_dict[pvals]:
@@ -779,27 +741,35 @@ def run_test_cospeciation(basename,
         acc_keys = acc_dict.keys()
         for key in keys:
             results_file.write(key + "\t")
+        
         for key in acc_keys:
             results_file.write(key + "\t")
+        
         results_file.write("h_span" + "\t")
         #Write results for each node
         num_nodes = len(results_dict[keys[0]])
+        
         for i in range(num_nodes):
             results_file.write("\n")
+            
             for key in keys:
                 results_file.write(str(results_dict[key][i]) + "\t")
+            
             for key in acc_keys:
                 results_file.write(str(acc_dict[key][i]) + "\t")
             #calculate 'host span' for each node -- 
             #host span is the minimum number of hosts in the subtree of the original
             #input host tree that is spanned by the hosts included in the cOTU table.
+            
             try:
                 h_span = str(len(host_tree.lowestCommonAncestor(results_dict['h_nodes'][i].getTipNames()).getTipNames()))
                 results_file.write(h_span)
+            
             except:
                 print 'h_span error!'
-            
+        
         results_file.close()
+        
         return True, sig_nodes, num_nodes
     
 
@@ -854,6 +824,7 @@ def filter_samples_from_distance_matrix(dm,samples_to_discard,negate=False):
     """
     try:
         sample_ids, dm_data = dm
+    
     except ValueError:
         # input was provide as a file handle
         sample_ids, dm_data = parse_distmat(dm)
@@ -866,23 +837,89 @@ def filter_samples_from_distance_matrix(dm,samples_to_discard,negate=False):
     if negate:
         def keep_sample(s):
             return s in sample_lookup
+    
     else:
+        
         def keep_sample(s):
             return s not in sample_lookup
             
     for row,sample_id in zip(dm_data,sample_ids):
+        
         if keep_sample(sample_id):
             temp_dm_data.append(row)
             new_sample_ids.append(sample_id)
+    
     temp_dm_data = array(temp_dm_data).transpose()
     
     for col,sample_id in zip(temp_dm_data,sample_ids):
+        
         if keep_sample(sample_id):
             new_dm_data.append(col)
+    
     new_dm_data = array(new_dm_data).transpose()
     
     return (new_sample_ids, new_dm_data)
+
+def sort_dm_by_sample(dm,sample_names):
+    """Sorts a qiime distance matrix tuple in the order of sample names given"""
     
+    dm_names_dict = dict([(x[1],x[0]) for x in enumerate(sample_names)])
+    name_slice = []
+    
+    for name in dm[0]:
+        name_slice.append(dm_names_dict[name])
+    
+    sorted_dm = dm[1][numpy.ix_(name_slice, name_slice)]
+    
+    return (sample_names,sorted_dm)
+    
+
+
+
+def filter_dms(otu_dm,host_dm,interaction,otu_subset): 
+    """This filters a host dm, symbiont dm, and interaction matrix by a set of
+    sybionts (otus) defined by otu_subset, and returns the sliced values.
+    Also eliminates any hosts that had no otus present."""
+    #input host dm, symbiont dm, and otu data
+    
+    #return filtered dms, 
+    s_vec = []
+    h_vec = []
+    h_names = []
+    s_names = []
+    
+    #find positional index (from OTU table) for each cOTU represented in this node:
+    for i in range(len(otu_dm[0])):
+        if otu_dm[0][i] in otu_subset:
+            s_vec.append(i)
+            s_names.append(otu_dm[0][i])
+    #slice symbiont distance matrix down to only cOTUs in this node 
+    
+    s_slice = otu_dm[1][numpy.ix_(s_vec,s_vec)]
+    
+    #slice interaction matrix down to only cOTUs in this node
+    i_s_slice = interaction[numpy.ix_(s_vec)]
+    
+    #find positional index (this time from OTU table size) for each sample in this node:
+    #sum all values in column for each host, if greater than zero, add that host position to h_vec
+    for j in range(i_s_slice.shape[1]):
+        if i_s_slice[:,j].sum():
+            h_vec.append(j)
+            h_names.append(host_dm[0][j])
+    
+    i_slice = interaction[numpy.ix_(s_vec,h_vec)]
+    
+    #slice host distance matrix
+    h_slice = host_dm[1][numpy.ix_(h_vec,h_vec)]
+    
+    sliced_host_dm = (h_names,h_slice)
+    sliced_otu_dm = (s_names,s_slice)
+    sliced_interaction = i_slice
+    
+    return(sliced_otu_dm, sliced_host_dm, sliced_interaction)
+
+
+
 def cogent_dist_to_qiime_dist(dist_tuple_dict):
     """
     This takes a dict with tuple keys and distance values, such as is output
@@ -919,26 +956,33 @@ def cogent_dist_to_qiime_dist(dist_tuple_dict):
     return parse_distmat(StringIO(dist_delim[1:]))
 
 def isTree(fstr):
+    
     try:
         LoadTree(treestring=fstr)
         return True
+    
     except:
         return False
 
 def isAlignment(fstr):
+    
     try:
         LoadSeqs(data=fstr)
         return True
+    
     except:
         return False
 
 def isMatrix(fstr):
+    
     try:
         result = parse_distmat(fstr.splitlines())
         if result[0] == None:
             return False
+        
         else:
             return True
+    
     except:
         return False
 
@@ -976,6 +1020,7 @@ def distmat_to_tree(distmat):
             if i != j:
                 cogent_host_dist[(dist_headers[i], dist_headers[j])]  = dist_matrix[i][j]
     # Generate tree from distance matrix
+    
     return nj.nj(cogent_host_dist)
 
 
@@ -995,16 +1040,37 @@ def main():
     taxonomy_fp = opts.taxonomy_fp
     
     
+    #Convert inputs to absolute paths
+    output_dir=os.path.abspath(output_dir)
+    host_tree_fp=os.path.abspath(host_tree_fp)
+    mapping_fp=os.path.abspath(mapping_fp)
+    potu_table_fp=os.path.abspath(potu_table_fp)
+    cotu_table_fp=os.path.abspath(cotu_table_fp)
+    
+    
     #Check Host Tree
     try:
         with open(host_tree_fp) as f:
             pass
+    
     except IOError as e:
         print 'Host Data could not be opened! Are you sure it is located at ' + host_tree_fp + '  ?'
         exit(1)
         
+    
+    #Check pOTU table
+    try:
+        with open(potu_table_fp) as f:
+            pass
+    
+    except IOError as e:
+        print 'parent OTU table could not be opened! Are you sure it is located at ' + potu_table_fp + '  ?'
+        exit(1)
+        
+    
     try:
         os.makedirs(output_dir)
+    
     except OSError:
         if opts.force:
             pass
@@ -1014,16 +1080,15 @@ def main():
             print "Output directory already exists. Please choose "+\
              "a different directory, or force overwrite with -f."
             exit(1)
-        
-    #Convert inputs to absolute paths
-    output_dir=os.path.abspath(output_dir)
-    host_tree_fp=os.path.abspath(host_tree_fp)
-    mapping_fp=os.path.abspath(mapping_fp)
-    potu_table_fp=os.path.abspath(potu_table_fp)
-    cotu_table_fp=os.path.abspath(cotu_table_fp)
+    
+    #get sample names present in potu table
+    sample_names, taxon_names, data, lineages = parse_otu_table(open(potu_table_fp, 'Ur'))
     
     #Process host input (tree/alignment/matrix) and take subtree of host supertree
-    host_tree, host_dist = make_dists_and_tree(potu_table_fp, host_tree_fp)
+    host_tree, host_dist = make_dists_and_tree(sample_names, host_tree_fp)
+    
+    ###At this point, the host tree and host dist matrix have the intersect of
+    ###the samples in the pOTU table and the input host tree/dm. 
     
     summary_file = open(output_dir + '/' + 'cospeciation_results_summary.txt', 'w')
     summary_file.write("sig_nodes\tnum_nodes\tfile\n")
@@ -1068,45 +1133,33 @@ def main():
                 ###Consider alternate step to go through and find closest DB seq to root?
                 otu_tree = otu_tree_unrooted.rootAtMidpoint()
                 
-                #Import host tree
-                #host_tree_file = open(host_tree_fp, 'r')
-                #host_tree = DndParser(host_tree_file, PhyloNode)
-                #host_tree_file.close()
-                
-                
-                #DEBUG:
-                #print "basename is:"
-                #print basename
-                
-                ###pool samples per host species (or chosen mapping category)
-                
-                #DEBUG:
-                #print mapping_fp
-                
-                
-                #Open otu table file
-                #get 
-                
+                #filter cOTU table by samples present in host_tree/dm
                 filtered_cotu_table = filter_samples_from_otu_table(cotu_file,\
-                                  host_tree.getTipNames(),\
+                                  host_dist[0],\
                                   negate=True)
                 
+                ###Now the cOTU table only has the samples present in the host dm
                 
-                
+                #parse the filtered cOTU table
                 sample_names, taxon_names, data, lineages = parse_otu_table(filtered_cotu_table)
                 
-                if len(sample_names) < 3 or len(taxon_names) < 3:
-                    print "Less than 3 hosts or cOTUs in cOTU table!"
-                    continue
+                #exit loop if less than three hosts or cOTUs
+                #if len(sample_names) < 3 or len(taxon_names) < 3:
+                #    print "Less than 3 hosts or cOTUs in cOTU table!"
+                #    continue
                 
-                #make a subtree of the included hosts; exclude hosts not in cOTU table
+                #filter host and cOTU trees
                 host_subtree = host_tree.getSubTree(sample_names)
                 otu_subtree = otu_tree.getSubTree(taxon_names)
                 
                 #Filter the host_dists to match the newly trimmed subtree
-                for key in host_dist.keys():
-                    if key[0] not in sample_names or key[1] not in sample_names:
-                        del host_dist[key]
+                #Note: this is requiring the modified filter_dist method which 
+                #returns a native dm tuple rather than a string.
+                host_dist = filter_samples_from_distance_matrix(host_dist,sample_names,negate=True)
+                
+                #for key in host_dist.keys():
+                #    if key[0] not in sample_names or key[1] not in sample_names:
+                #        del host_dist[key]
                 #DEBUG:
                 #print host_subtree.getTipNames()
                 
