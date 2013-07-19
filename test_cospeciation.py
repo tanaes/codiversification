@@ -1128,14 +1128,15 @@ def main():
     #test that you have a directory, otherwise exit.
     if os.path.isdir(cotu_table_fp):
         os.chdir(cotu_table_fp)
-        #run test on all otu tables in directory
-        for file in os.listdir('.'):
-            if file.endswith("otu_table.txt"):
-                #DEBUG:
-                #print file
-                
-                #Infer pOTU name from filename
-                cotu_basename = file.split('_')[0];
+        
+        #run test on cOTU tables in directory.
+        #use pOTU table to choose which cOTUs to use.
+        for line in open(potu_table_fp, 'r'):
+            #ignore comment lines
+            if not line.startswith('#'): 
+                #first element in OTU table tab-delimited row
+                cotu_basename = line.split('\t')[0]
+
                 print "Analyzing pOTU # " + cotu_basename
                 
                 result=False
@@ -1234,7 +1235,6 @@ def main():
                     outline = "ERROR\t\t" + file + "\n"
                 print outline
                 summary_file.write(outline)
-            
         
     else:
         print 'Not a directory.'
