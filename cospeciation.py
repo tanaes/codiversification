@@ -26,6 +26,7 @@ from cogent.parse.tree import DndParser
 import re
 from cogent.phylo import distance, nj
 from cogent.evolve.models import HKY85
+from qiime.format import format_otu_table
 
 # the following 3 imports added 2013-07-09 by Aaron Behr
 # for method cogent_dist_to_qiime_dist 
@@ -897,7 +898,34 @@ def run_test_cospeciation(basename,
         
         return True, sig_nodes, num_nodes
 
-
+def reconcile_hosts_symbionts(otu_file, host_dist):
+    
+    #filter cOTU table by samples present in host_tree/dm
+    
+    filtered_cotu_table = filter_samples_from_otu_table(otu_file,\
+                      host_dist[0],\
+                      negate=True)
+    
+    ###Now the cOTU table only has the samples present in the host dm
+    
+    #parse the filtered cOTU table
+    sample_names, taxon_names, data, lineages = parse_otu_table(filtered_cotu_table)
+    
+    #filter cOTU table again because skip_empty doesn't seem to be 
+    #working in format_otu_table called from 
+    #filter_samples_from_otu_table
+    
+    sample_names, taxon_names, data, lineages = filter_otu_table_by_min(sample_names, taxon_names, data, lineages, min=1)
+    
+    #Filter the host_dists to match the newly trimmed subtree
+    #Note: this is requiring the modified filter_dist method which 
+    #returns a native dm tuple rather than a string.
+    
+    host_dist_filtered = filter_samples_from_distance_matrix(host_dist,sample_names,negate=True)
+    
+    filtered_otu_table_lines = format_otu_table(sample_names, taxon_names, data, lineages)
+    
+    return StringIO(filtered_otu_table_lines), host_dist_filtered
 
 def test_cospeciation(potu_table_fp,cotu_table_fp,host_tree_fp,mapping_fp,mapping_category,output_dir,significance_level,test,permutations,taxonomy_fp,force):
     
@@ -972,74 +1000,48 @@ def test_cospeciation(potu_table_fp,cotu_table_fp,host_tree_fp,mapping_fp,mappin
 
                 print "Analyzing pOTU # " + cotu_basename
                 
-                result=False
-                
-                
                 cotu_table_fp = cotu_basename + '_seqs_otu_table.txt'
                 
+                basename = cotu_basename + "_" + test
+                
+                #Read in cOTU file
                 try:
                     cotu_file = open(cotu_table_fp, 'Ur')
                 except:
                     print "is this a real file?"
                 
+                #Reconcile hosts in host DM and cOTU table
+                filtered_cotu_file, host_dist_filtered = reconcile_hosts_symbionts(cotu_file, host_dist)
                 
-                basename = cotu_basename + "_" + test
+                cotu_file.close()
                 
-                #Import cOTU tree
-                otu_tree_fp = cotu_basename + "_seqs_rep_set.tre"
-                otu_tree_file = open(otu_tree_fp, 'r')
-                otu_tree_unrooted = DndParser(otu_tree_file, PhyloNode)
-                otu_tree_file.close()
-                
-                #root at midpoint
-                
-                ###Consider alternate step to go through and find closest DB seq to root?
-                otu_tree = otu_tree_unrooted.rootAtMidpoint()
-                
-                #filter cOTU table by samples present in host_tree/dm
-                filtered_cotu_table = filter_samples_from_otu_table(cotu_file,\
-                                  host_dist[0],\
-                                  negate=True)
-                
-                
-                ###Now the cOTU table only has the samples present in the host dm
-                
-                #parse the filtered cOTU table
-                sample_names, taxon_names, data, lineages = parse_otu_table(filtered_cotu_table)
-                
-                #filter cOTU table again because skip_empty doesn't seem to be 
-                #working in format_otu_table called from 
-                #filter_samples_from_otu_table
-                
-                sample_names, taxon_names, data, lineages = filter_otu_table_by_min( sample_names, taxon_names, data, lineages, min=1)
-                
-                #print "Filtered cOTU table:"
-                #print data
+                #Read in reconciled cOTU table
+                sample_names, taxon_names, data, lineages = parse_otu_table(filtered_cotu_file)
+                filtered_cotu_file.close()
                 
                 #exit loop if less than three hosts or cOTUs
                 if len(sample_names) < 3 or len(taxon_names) < 3:
                     print "Less than 3 hosts or cOTUs in cOTU table!"
                     continue
                 
-                #filter host and cOTU trees
+                #Import, filter, and root cOTU tree
+                otu_tree_fp = cotu_basename + "_seqs_rep_set.tre"
+                otu_tree_file = open(otu_tree_fp, 'r')
+                otu_tree_unrooted = DndParser(otu_tree_file, PhyloNode)
+                otu_tree_file.close()
+                otu_subtree_unrooted = otu_tree_unrooted.getSubTree(taxon_names)
+                #root at midpoint
+                ###Consider alternate step to go through and find closest DB seq to root?
+                otu_subtree = otu_subtree_unrooted.rootAtMidpoint()
+                
+                #filter host tree
                 host_subtree = host_tree.getSubTree(sample_names)
-                otu_subtree = otu_tree.getSubTree(taxon_names)
                 
-                #Filter the host_dists to match the newly trimmed subtree
-                #Note: this is requiring the modified filter_dist method which 
-                #returns a native dm tuple rather than a string.
-                host_dist_filtered = filter_samples_from_distance_matrix(host_dist,sample_names,negate=True)
-                
-                #for key in host_dist.keys():
-                #    if key[0] not in sample_names or key[1] not in sample_names:
-                #        del host_dist[key]
-                #DEBUG:
-                #print host_subtree.getTipNames()
-                
-                #Load up cOTU sequences
+                #Load up and filter cOTU sequences
                 aligned_otu_seqs = LoadSeqs(cotu_basename + '_seqs_rep_set_aligned.fasta', moltype=DNA, label_to_name=lambda x: x.split()[0])
-                #Take only ones that made it through host filtering
                 filtered_seqs = aligned_otu_seqs.takeSeqs(taxon_names)
+                
+                result=False
                 
                 #Run recursive test on this pOTU:
                 try:
