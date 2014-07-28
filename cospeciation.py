@@ -141,47 +141,6 @@ def get_dist(labels,dists,index):
     return vec
 
 
-def dist2Dict2D(dist_dict,sample_names):
-    """This little routine takes distance calc outputs from Cogent and sticks 
-    them into a Dict2D object."""
-    
-    from cogent.util.dict2d import Dict2D
-    
-    #print "Before dist dict:"
-    #print dist_dict
-    
-    dist_list = []
-    
-    #this ugliness is necessary because Dict2D guesses wrong with symmetric data
-    #structures of size 3 where you want padded diagonals. 
-    if len(sample_names)==3:
-        for x in range(3):
-            row_list=[]
-            for y in range(3):
-                if x==y:
-                    row_list.append(0)
-                else:
-                    try:
-                        row_list.append(dist_dict[(sample_names[x],sample_names[y])])
-                    except:
-                        row_list.append(dist_dict[(sample_names[y],sample_names[x])])
-            dist_list.append(row_list)
-    else:       
-        for item in dist_dict.iteritems():
-            #DEBUG:
-            #print item
-            #pause = raw_input("")
-            dist_list.append([item[0][0],item[0][1],item[1]])
-    
-    dict2d = Dict2D(dist_list,sample_names,sample_names,0,True)
-    
-    #print "After dist dict:"
-    #print dist_dict
-    #pause = raw_input("pause")
-    
-    return dict2d
-
-
 def cogent_dist_to_qiime_dist(dist_tuple_dict):
     """
     This takes a dict with tuple keys and distance values, such as is output
@@ -545,166 +504,6 @@ def unifrac_recursive_test(ref_tree,tree,sample_names,
     
     return (results_dict, acc_dict)
 
-
-#This routine fixes a problem with OTU tables that don't have taxonomic information.
-#There's an empty column at the end that you need to remove.
-def stupid_hack(summarized_otu_table):
-    import re
-    p = re.compile('Consensus Lineage')
-    q = re.compile('\t\n')
-    summarized_otu_table += '\n'
-    summarized_otu_table = p.sub('',summarized_otu_table)
-    summarized_otu_table = q.sub('\n',summarized_otu_table)
-    return summarized_otu_table
-
-#host_subtree, otu_tree, sample_names, taxon_names, data, permutations,host_dist, filtered_seqs
-
-def run_test_cospeciation(basename,
-     host_tree,
-     host_subtree,
-     host_dist,
-     otu_subtree,
-     sample_names,
-     taxon_names,
-     data,
-     filtered_seqs,
-     output_dir,
-     test,
-     significance_level=0.05,
-     permutations=100):
-    
-    """This function actually tests for cospeciation.
-    
-    As an input, it takes information about the parent OTU and host phylogeny.
-    
-    If the parent OTU table was summarized prior to the test, it summarizes the 
-    child OTU table according to the same category in the mapping file. 
-    
-    Then, the set of samples shard by the host tree and parent OTU are retained,
-    and any orphaned child OTUs removed. This subsetted host tree and child OTU
-    table are passed to the actual test routine. 
-    
-    The routine expects two dicts 
-    to be returned from the test routine: a standard results dict, which is ini-
-    tialized in this routine with keys for h_tips, s_tips, p_vals, h_nodes, and 
-    s_nodes (host and symbionts [cOTUs] present at each node, significance, and 
-    newick-formatted nodes themselves). The values in this dict should be 
-    ordered lists of node information. It also accepts an accessory dict with 
-    any additional per-node information specific to the test used. These data 
-    will be appended to the pOTU results file under column headings determined 
-    by dict keys.
-    
-    Writes a file for each pOTU using these two dicts, with information on each
-    node of the cOTU tree on a separate line. 
-    
-    Returns a boolean True if the test completed, as well as ints for the number
-    of nodes tested in that pOTU, and the number of those significant under the 
-    given criterea. 
-    """
-    
-    from cogent.app.muscle import align_unaligned_seqs as muscle_aln
-    from cogent.app.fasttree import build_tree_from_alignment as fasttree_build_tree
-    from cogent.core.tree import PhyloNode
-    from cogent import LoadTree, LoadSeqs, DNA
-    from cogent.parse.tree import DndParser
-    from qiime.summarize_otu_by_cat import summarize_by_cat
-    import re
-    import numpy
-    import StringIO
-    
-    #DEBUG:
-    #print 'in run_test_cospeciation'
-    
-    #get number of hosts and cOTUs
-    htips = len(host_subtree.getTipNames())
-    stips = len(otu_subtree.getTipNames())
-    
-    #DEBUG:
-    #print "got tips" + htips + "_" + stips
-    
-    #Since we got rid of some stuff, check to see if there are enough hosts and cOTUs
-    if htips < 3 or stips < 3:
-        results_dict = {'h_tips':htips,'s_tips':stips,'s_nodes':otu_tree,'h_nodes':host_subtree,'p_vals': 1} 
-        pvals = 'p_vals'
-        sig_nodes = 0
-        num_nodes = 0
-        print "Host or cOTU tree has less than three tips! "
-        
-        return True,sig_nodes,num_nodes
-    
-    else:
-        #DEBUG:
-        #print "in test else"
-        if test == 'unifrac':
-            print 'calling unifrac test'
-            results_dict, acc_dict = unifrac_recursive_test(host_subtree,otu_subtree,sample_names,
-             taxon_names,data,permutations)
-            pvals = 'p_vals'
-        
-        if test == 'hommola_recursive':
-            
-            #run recursive hommola test
-            results_dict, acc_dict = recursive_hommola(filtered_seqs, host_subtree, host_dist, otu_subtree,sample_names,
-             taxon_names,data,permutations,recurse=True)
-            
-            pvals = 'p_vals'
-        
-        if test == 'hommola':
-            
-            #run recursive hommola test
-            results_dict, acc_dict = recursive_hommola(filtered_seqs, host_subtree, host_dist, otu_subtree,sample_names,
-             taxon_names,data,permutations,recurse=False)
-            
-            pvals = 'p_vals'
-        
-        sig_nodes = 0
-        
-        #Count number of significant nodes
-        for pval in results_dict[pvals]:
-            if pval < significance_level:
-                sig_nodes += 1
-        
-        #print results_dict
-        #print acc_dict
-        
-        results_file = open(output_dir + '/' + basename + '_results.txt', 'w')
-        
-        keys = results_dict.keys()
-        acc_keys = acc_dict.keys()
-        for key in keys:
-            results_file.write(key + "\t")
-        
-        for key in acc_keys:
-            results_file.write(key + "\t")
-        
-        results_file.write("h_span" + "\t")
-        #Write results for each node
-        num_nodes = len(results_dict[keys[0]])
-        
-        for i in range(num_nodes):
-            results_file.write("\n")
-            
-            for key in keys:
-                results_file.write(str(results_dict[key][i]) + "\t")
-            
-            for key in acc_keys:
-                results_file.write(str(acc_dict[key][i]) + "\t")
-            #calculate 'host span' for each node -- 
-            #host span is the minimum number of hosts in the subtree of the original
-            #input host tree that is spanned by the hosts included in the cOTU table.
-            
-            try:
-                h_span = str(len(host_tree.lowestCommonAncestor(results_dict['h_nodes'][i].getTipNames()).getTipNames()))
-                results_file.write(h_span)
-            
-            except:
-                print 'h_span error!'
-        
-        results_file.close()
-        
-        return True, sig_nodes, num_nodes
-
-
 def make_dists_and_tree(sample_names, host_fp):
     """
     This routine reads in your host information (tree, alignment, or distance 
@@ -953,6 +752,150 @@ def filter_otu_table_by_min(sample_names, taxon_names, data, lineages, min=1):
     
     return h_names,s_names,data,taxonomies
 
+def run_test_cospeciation(basename,
+     host_tree,
+     host_subtree,
+     host_dist,
+     otu_subtree,
+     sample_names,
+     taxon_names,
+     data,
+     filtered_seqs,
+     output_dir,
+     test,
+     significance_level=0.05,
+     permutations=100):
+    
+    """This function actually tests for cospeciation.
+    
+    As an input, it takes information about the parent OTU and host phylogeny.
+    
+    If the parent OTU table was summarized prior to the test, it summarizes the 
+    child OTU table according to the same category in the mapping file. 
+    
+    Then, the set of samples shard by the host tree and parent OTU are retained,
+    and any orphaned child OTUs removed. This subsetted host tree and child OTU
+    table are passed to the actual test routine. 
+    
+    The routine expects two dicts 
+    to be returned from the test routine: a standard results dict, which is ini-
+    tialized in this routine with keys for h_tips, s_tips, p_vals, h_nodes, and 
+    s_nodes (host and symbionts [cOTUs] present at each node, significance, and 
+    newick-formatted nodes themselves). The values in this dict should be 
+    ordered lists of node information. It also accepts an accessory dict with 
+    any additional per-node information specific to the test used. These data 
+    will be appended to the pOTU results file under column headings determined 
+    by dict keys.
+    
+    Writes a file for each pOTU using these two dicts, with information on each
+    node of the cOTU tree on a separate line. 
+    
+    Returns a boolean True if the test completed, as well as ints for the number
+    of nodes tested in that pOTU, and the number of those significant under the 
+    given criterea. 
+    """
+    
+    from cogent.app.muscle import align_unaligned_seqs as muscle_aln
+    from cogent.app.fasttree import build_tree_from_alignment as fasttree_build_tree
+    from cogent.core.tree import PhyloNode
+    from cogent import LoadTree, LoadSeqs, DNA
+    from cogent.parse.tree import DndParser
+    from qiime.summarize_otu_by_cat import summarize_by_cat
+    import re
+    import numpy
+    import StringIO
+    
+    #DEBUG:
+    #print 'in run_test_cospeciation'
+    
+    #get number of hosts and cOTUs
+    htips = len(host_subtree.getTipNames())
+    stips = len(otu_subtree.getTipNames())
+    
+    #DEBUG:
+    #print "got tips" + htips + "_" + stips
+    
+    #Since we got rid of some stuff, check to see if there are enough hosts and cOTUs
+    if htips < 3 or stips < 3:
+        results_dict = {'h_tips':htips,'s_tips':stips,'s_nodes':otu_tree,'h_nodes':host_subtree,'p_vals': 1} 
+        pvals = 'p_vals'
+        sig_nodes = 0
+        num_nodes = 0
+        print "Host or cOTU tree has less than three tips! "
+        
+        return True,sig_nodes,num_nodes
+    
+    else:
+        #DEBUG:
+        #print "in test else"
+        if test == 'unifrac':
+            print 'calling unifrac test'
+            results_dict, acc_dict = unifrac_recursive_test(host_subtree,otu_subtree,sample_names,
+             taxon_names,data,permutations)
+            pvals = 'p_vals'
+        
+        if test == 'hommola_recursive':
+            
+            #run recursive hommola test
+            results_dict, acc_dict = recursive_hommola(filtered_seqs, host_subtree, host_dist, otu_subtree,sample_names,
+             taxon_names,data,permutations,recurse=True)
+            
+            pvals = 'p_vals'
+        
+        if test == 'hommola':
+            
+            #run recursive hommola test
+            results_dict, acc_dict = recursive_hommola(filtered_seqs, host_subtree, host_dist, otu_subtree,sample_names,
+             taxon_names,data,permutations,recurse=False)
+            
+            pvals = 'p_vals'
+        
+        sig_nodes = 0
+        
+        #Count number of significant nodes
+        for pval in results_dict[pvals]:
+            if pval < significance_level:
+                sig_nodes += 1
+        
+        #print results_dict
+        #print acc_dict
+        
+        results_file = open(output_dir + '/' + basename + '_results.txt', 'w')
+        
+        keys = results_dict.keys()
+        acc_keys = acc_dict.keys()
+        for key in keys:
+            results_file.write(key + "\t")
+        
+        for key in acc_keys:
+            results_file.write(key + "\t")
+        
+        results_file.write("h_span" + "\t")
+        #Write results for each node
+        num_nodes = len(results_dict[keys[0]])
+        
+        for i in range(num_nodes):
+            results_file.write("\n")
+            
+            for key in keys:
+                results_file.write(str(results_dict[key][i]) + "\t")
+            
+            for key in acc_keys:
+                results_file.write(str(acc_dict[key][i]) + "\t")
+            #calculate 'host span' for each node -- 
+            #host span is the minimum number of hosts in the subtree of the original
+            #input host tree that is spanned by the hosts included in the cOTU table.
+            
+            try:
+                h_span = str(len(host_tree.lowestCommonAncestor(results_dict['h_nodes'][i].getTipNames()).getTipNames()))
+                results_file.write(h_span)
+            
+            except:
+                print 'h_span error!'
+        
+        results_file.close()
+        
+        return True, sig_nodes, num_nodes
 
 
 

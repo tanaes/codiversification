@@ -13,14 +13,22 @@ __status__ = "Experimental"
 
 from qiime.util import make_option
 import os, sys
-import cospeciation
+from cospeciation import *
+
+from qiime.util import make_option
+from qiime.util import load_qiime_config, parse_command_line_parameters,\
+ get_options_lookup
+from qiime.parse import parse_qiime_parameters, parse_taxonomy
+import os.path
+import os
+
 # the following 3 imports added 2013-07-09 by Aaron Behr
 # for method cogent_dist_to_qiime_dist 
 from StringIO import StringIO
 from qiime.parse import parse_distmat
 
 #parallel_test_cospeciation.py
-qiime_config = load_qiime_config()
+#qiime_config = load_qiime_config()
 options_lookup = get_options_lookup()
 script_info={}
 script_info['brief_description']="""
@@ -111,11 +119,6 @@ script_info['optional_options']=[
             '[default: %default]',\
             default=1000),\
             
- make_option('-a','--jobs',type='int',\
-            help='Jobs to start '+\
-            '[default: %default]',\
-            default=1000),\
-
  make_option('--force',action='store_true',\
         dest='force',help='Force overwrite of existing output directory'+\
         ' (note: existing files in output_dir will not be removed)'+\
@@ -137,8 +140,7 @@ def main():
     test = opts.test
     permutations = int(opts.permutations)
     taxonomy_fp = opts.taxonomy_fp
-    jobs = int(opts.jobs)
-	test_cospeciation(potu_table_fp,cotu_table_fp,host_tree_fp,mapping_fp,mapping_category,output_dir,significance_level,test,permutations,taxonomy_fp,opts.force)
+    test_cospeciation(potu_table_fp,cotu_table_fp,host_tree_fp,mapping_fp,mapping_category,output_dir,significance_level,test,permutations,taxonomy_fp,opts.force)
 
 if __name__ == "__main__":
     main()

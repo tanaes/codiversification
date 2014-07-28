@@ -13,7 +13,19 @@ __status__ = "Experimental"
 
 #importing modules 
 from sys import exit, stderr, stdout
-import subcluster
+from subcluster import *
+
+import os, sys
+
+from qiime.util import make_option
+from qiime.util import load_qiime_config, parse_command_line_parameters,\
+ get_options_lookup
+from qiime.parse import parse_qiime_parameters, parse_taxonomy
+import os.path
+import os
+
+
+
 
 options_lookup = get_options_lookup()
 
