@@ -11,49 +11,28 @@ __maintainer__ = "Jon Sanders"
 __email__ = "jonsan@gmail.com"
 __status__ = "Experimental"
 
-from qiime.util import make_option
-import os, sys
-from qiime.util import load_qiime_config, parse_command_line_parameters, get_options_lookup, parse_otu_table
-from qiime.parse import parse_qiime_parameters, parse_taxonomy, parse_distmat
-from cogent import LoadTree, LoadSeqs, DNA
-from qiime.summarize_otu_by_cat import summarize_by_cat
-import StringIO
+
+import os, sys, re
+from StringIO import StringIO
 import numpy
-from cogent.parse.tree import DndParser
+from random import shuffle
+
+from qiime.util import load_qiime_config, parse_command_line_parameters, get_options_lookup, parse_otu_table, make_option
+from qiime.parse import parse_qiime_parameters, parse_taxonomy, parse_distmat, make_envs_dict
 from qiime.filter import filter_samples_from_otu_table, filter_samples_from_distance_matrix
-from cogent.core.tree import PhyloNode
+from qiime.format import format_otu_table
+
+
 from cogent.parse.tree import DndParser
-import re
+from cogent.core.tree import PhyloNode
 from cogent.phylo import distance, nj
 from cogent.evolve.models import HKY85
-from qiime.format import format_otu_table
-from cogent.app.muscle import align_unaligned_seqs as muscle_aln
-from cogent.app.fasttree import build_tree_from_alignment as fasttree_build_tree
-from cogent.core.tree import PhyloNode
+from cogent.evolve.pairwise_distance import TN93Pair
+from cogent.maths.unifrac.fast_unifrac import fast_unifrac
 from cogent import LoadTree, LoadSeqs, DNA
-from cogent.parse.tree import DndParser
-from qiime.summarize_otu_by_cat import summarize_by_cat
-import re
-import numpy
-import StringIO
+from cogent.util.dict2d import Dict2D,largest
 
-# the following 3 imports added 2013-07-09 by Aaron Behr
-# for method cogent_dist_to_qiime_dist 
-from StringIO import StringIO
-from qiime.parse import parse_distmat
-from cogent.util.dict2d import Dict2D
 
-"""
-from cogent.app.muscle import align_unaligned_seqs as muscle_aln
-from cogent.app.fasttree import build_tree_from_alignment as fasttree_build_tree
-from cogent.core.tree import PhyloNode
-from cogent import LoadTree, LoadSeqs, DNA
-from cogent.parse.tree import DndParser
-from qiime.summarize_otu_by_cat import summarize_by_cat
-import re
-import numpy
-import StringIO
-"""
 
 def hommola_cospeciation_test(host_dist, par_dist, matrix, permutations):
     """Performs the cospeciation test from Hommola et al recursively over a tree.
@@ -160,9 +139,7 @@ def cogent_dist_to_qiime_dist(dist_tuple_dict):
     
     EDITED AND UPDATED 2013-07-09 Aaron Behr
     """
-    from StringIO import StringIO
-    from qiime.parse import parse_distmat
-    from cogent.util.dict2d import Dict2D, largest
+    
     
     headers = []
     dist_dict = {}
@@ -237,13 +214,6 @@ def recursive_hommola(aligned_otu_seqs,host_subtree,host_dm,otu_tree,sample_name
     
     It returns a dictionary of the results, and an empty accessory dict.
     """
-    
-    from cogent.evolve.pairwise_distance import TN93Pair
-    from cogent.maths.unifrac.fast_unifrac import fast_unifrac
-    from cogent.parse.tree import DndParser
-    from cogent.core.tree import PhyloNode, TreeError
-    from cogent.util.dict2d import Dict2D
-    import numpy
     
     #print "Performing recursive Hommola et al cospeciation test..." 
     
@@ -378,12 +348,6 @@ def unifrac_recursive_test(ref_tree,tree,sample_names,
     match than the true tree. 
     """
     UNIFRAC_CLUST_ENVS = "cluster_envs"
-    from cogent.maths.unifrac.fast_unifrac import fast_unifrac
-    from cogent.parse.tree import DndParser
-    from cogent.core.tree import PhyloNode, TreeError
-    from random import shuffle
-    from qiime.parse import make_envs_dict
-    import numpy
     
     lengths,dists,sets,s_nodes,h_nodes,dist_below,sets_below, h_tips, s_tips = [],[],[],[],[],[],[], [], []
     
