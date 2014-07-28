@@ -229,8 +229,8 @@ def print_sig_lists(results_list,results_keys,p_dict,significance_level=0.05,otu
         if h_ratio > pOTU_dict[pOTU][4] and p_dict[node][2] < alpha:
             pOTU_dict[pOTU][4] = h_ratio
     
-    #make an integer sorted list of pOTU keys
-    pOTUs = sorted([int(key) for key in pOTU_dict.keys()])
+    #make a string sorted list of pOTU keys
+    pOTUs = sorted([key for key in pOTU_dict.keys()])
     
     for pOTU in pOTUs:
         pOTU_summary += str(pOTU) + '\t'
