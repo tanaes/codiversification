@@ -26,6 +26,15 @@ from cogent.parse.tree import DndParser
 import re
 from cogent.phylo import distance, nj
 from cogent.evolve.models import HKY85
+from cogent.app.muscle import align_unaligned_seqs as muscle_aln
+from cogent.app.fasttree import build_tree_from_alignment as fasttree_build_tree
+from cogent.core.tree import PhyloNode
+from cogent import LoadTree, LoadSeqs, DNA
+from cogent.parse.tree import DndParser
+from qiime.summarize_otu_by_cat import summarize_by_cat
+import re
+import numpy
+import StringIO
 
 # the following 3 imports added 2013-07-09 by Aaron Behr
 # for method cogent_dist_to_qiime_dist 
@@ -752,31 +761,63 @@ def filter_otu_table_by_min(sample_names, taxon_names, data, lineages, min=1):
     
     return h_names,s_names,data,taxonomies
 
-def run_test_cospeciation(basename,
-     host_tree,
-     host_subtree,
-     host_dist,
-     otu_subtree,
-     sample_names,
-     taxon_names,
-     data,
-     filtered_seqs,
-     output_dir,
-     test,
-     significance_level=0.05,
-     permutations=100):
+def write_results(results_dict,acc_dict,output_dir,basename,host_tree):
+    #print results_dict
+    #print acc_dict
+        
+    results_file = open(output_dir + '/' + basename + '_results.txt', 'w')
+        
+    keys = results_dict.keys()
+    acc_keys = acc_dict.keys()
+    for key in keys:
+        results_file.write(key + "\t")
+        
+    for key in acc_keys:
+        results_file.write(key + "\t")
+        
+    results_file.write("h_span" + "\t")
+    #Write results for each node
+    num_nodes = len(results_dict[keys[0]])
+        
+    for i in range(num_nodes):
+        results_file.write("\n")
+            
+        for key in keys:
+            results_file.write(str(results_dict[key][i]) + "\t")
+            
+        for key in acc_keys:
+            results_file.write(str(acc_dict[key][i]) + "\t")
+        
+        h_span = calc_h_span(host_tree,results_dict,i)
+        results_file.write(h_span)
+  
+    results_file.close()
+    return num_nodes
+        
+def calc_h_span(host_tree,results_dict,i):
+    #calculate 'host span' for each node -- 
+    #host span is the minimum number of hosts in the subtree of the original
+    #input host tree that is spanned by the hosts included in the cOTU table.
+      
+    try:
+        h_span = str(len(host_tree.lowestCommonAncestor(results_dict['h_nodes'][i].getTipNames()).getTipNames()))
+    except:
+        print 'h_span error!'
+    return h_span
+
+def test_cospeciation(potu_table_fp,cotu_table_fp,host_tree_fp,mapping_fp,mapping_category,output_dir,significance_level,test,permutations,taxonomy_fp,force):
     
     """This function actually tests for cospeciation.
-    
+
     As an input, it takes information about the parent OTU and host phylogeny.
-    
+
     If the parent OTU table was summarized prior to the test, it summarizes the 
     child OTU table according to the same category in the mapping file. 
-    
+
     Then, the set of samples shard by the host tree and parent OTU are retained,
     and any orphaned child OTUs removed. This subsetted host tree and child OTU
     table are passed to the actual test routine. 
-    
+
     The routine expects two dicts 
     to be returned from the test routine: a standard results dict, which is ini-
     tialized in this routine with keys for h_tips, s_tips, p_vals, h_nodes, and 
@@ -786,122 +827,11 @@ def run_test_cospeciation(basename,
     any additional per-node information specific to the test used. These data 
     will be appended to the pOTU results file under column headings determined 
     by dict keys.
-    
+
     Writes a file for each pOTU using these two dicts, with information on each
     node of the cOTU tree on a separate line. 
-    
-    Returns a boolean True if the test completed, as well as ints for the number
-    of nodes tested in that pOTU, and the number of those significant under the 
-    given criterea. 
     """
-    
-    from cogent.app.muscle import align_unaligned_seqs as muscle_aln
-    from cogent.app.fasttree import build_tree_from_alignment as fasttree_build_tree
-    from cogent.core.tree import PhyloNode
-    from cogent import LoadTree, LoadSeqs, DNA
-    from cogent.parse.tree import DndParser
-    from qiime.summarize_otu_by_cat import summarize_by_cat
-    import re
-    import numpy
-    import StringIO
-    
-    #DEBUG:
-    #print 'in run_test_cospeciation'
-    
-    #get number of hosts and cOTUs
-    htips = len(host_subtree.getTipNames())
-    stips = len(otu_subtree.getTipNames())
-    
-    #DEBUG:
-    #print "got tips" + htips + "_" + stips
-    
-    #Since we got rid of some stuff, check to see if there are enough hosts and cOTUs
-    if htips < 3 or stips < 3:
-        results_dict = {'h_tips':htips,'s_tips':stips,'s_nodes':otu_tree,'h_nodes':host_subtree,'p_vals': 1} 
-        pvals = 'p_vals'
-        sig_nodes = 0
-        num_nodes = 0
-        print "Host or cOTU tree has less than three tips! "
         
-        return True,sig_nodes,num_nodes
-    
-    else:
-        #DEBUG:
-        #print "in test else"
-        if test == 'unifrac':
-            print 'calling unifrac test'
-            results_dict, acc_dict = unifrac_recursive_test(host_subtree,otu_subtree,sample_names,
-             taxon_names,data,permutations)
-            pvals = 'p_vals'
-        
-        if test == 'hommola_recursive':
-            
-            #run recursive hommola test
-            results_dict, acc_dict = recursive_hommola(filtered_seqs, host_subtree, host_dist, otu_subtree,sample_names,
-             taxon_names,data,permutations,recurse=True)
-            
-            pvals = 'p_vals'
-        
-        if test == 'hommola':
-            
-            #run recursive hommola test
-            results_dict, acc_dict = recursive_hommola(filtered_seqs, host_subtree, host_dist, otu_subtree,sample_names,
-             taxon_names,data,permutations,recurse=False)
-            
-            pvals = 'p_vals'
-        
-        sig_nodes = 0
-        
-        #Count number of significant nodes
-        for pval in results_dict[pvals]:
-            if pval < significance_level:
-                sig_nodes += 1
-        
-        #print results_dict
-        #print acc_dict
-        
-        results_file = open(output_dir + '/' + basename + '_results.txt', 'w')
-        
-        keys = results_dict.keys()
-        acc_keys = acc_dict.keys()
-        for key in keys:
-            results_file.write(key + "\t")
-        
-        for key in acc_keys:
-            results_file.write(key + "\t")
-        
-        results_file.write("h_span" + "\t")
-        #Write results for each node
-        num_nodes = len(results_dict[keys[0]])
-        
-        for i in range(num_nodes):
-            results_file.write("\n")
-            
-            for key in keys:
-                results_file.write(str(results_dict[key][i]) + "\t")
-            
-            for key in acc_keys:
-                results_file.write(str(acc_dict[key][i]) + "\t")
-            #calculate 'host span' for each node -- 
-            #host span is the minimum number of hosts in the subtree of the original
-            #input host tree that is spanned by the hosts included in the cOTU table.
-            
-            try:
-                h_span = str(len(host_tree.lowestCommonAncestor(results_dict['h_nodes'][i].getTipNames()).getTipNames()))
-                results_file.write(h_span)
-            
-            except:
-                print 'h_span error!'
-        
-        results_file.close()
-        
-        return True, sig_nodes, num_nodes
-
-
-
-def test_cospeciation(potu_table_fp,cotu_table_fp,host_tree_fp,mapping_fp,mapping_category,output_dir,significance_level,test,permutations,taxonomy_fp,force):
-    
-    
     #Convert inputs to absolute paths
     output_dir=os.path.abspath(output_dir)
     host_tree_fp=os.path.abspath(host_tree_fp)
@@ -1044,21 +974,60 @@ def test_cospeciation(potu_table_fp,cotu_table_fp,host_tree_fp,mapping_fp,mappin
                 #Run recursive test on this pOTU:
                 try:
                     #DEBUG:
-                    #print 'Trying to run cospeciation test'
-                    result, sig_nodes, num_nodes = run_test_cospeciation(
-                     basename=basename,
-                     host_tree=host_tree,
-                     host_subtree=host_subtree,
-                     host_dist=host_dist_filtered,
-                     otu_subtree=otu_subtree,
-                     sample_names=sample_names,
-                     taxon_names=taxon_names,
-                     data=data,
-                     filtered_seqs=filtered_seqs,
-                     output_dir=output_dir,
-                     test=test,
-                     significance_level=significance_level,
-                     permutations=permutations)
+                    #print 'in run_test_cospeciation'
+
+                    #get number of hosts and cOTUs
+                    htips = len(host_subtree.getTipNames())
+                    stips = len(otu_subtree.getTipNames())
+
+                    #DEBUG:
+                    #print "got tips" + htips + "_" + stips
+
+                    #Since we got rid of some stuff, check to see if there are enough hosts and cOTUs
+                    if htips < 3 or stips < 3:
+                        results_dict = {'h_tips':htips,'s_tips':stips,'s_nodes':otu_tree,'h_nodes':host_subtree,'p_vals': 1} 
+                        pvals = 'p_vals'
+                        sig_nodes = 0
+                        num_nodes = 0
+                        print "Host or cOTU tree has less than three tips! "
+    
+                        result = True
+
+                    else:
+                        #DEBUG:
+                        #print "in test else"
+                        if test == 'unifrac':
+                            print 'calling unifrac test'
+                            results_dict, acc_dict = unifrac_recursive_test(host_subtree,otu_subtree,sample_names,
+                             taxon_names,data,permutations)
+                            pvals = 'p_vals'
+    
+                        if test == 'hommola_recursive':
+        
+                            #run recursive hommola test
+                            results_dict, acc_dict = recursive_hommola(filtered_seqs, host_subtree, host_dist_filtered, otu_subtree,sample_names,
+                             taxon_names,data,permutations,recurse=True)
+        
+                            pvals = 'p_vals'
+    
+                        if test == 'hommola':
+        
+                            #run recursive hommola test
+                            results_dict, acc_dict = recursive_hommola(filtered_seqs, host_subtree, host_dist_filtered, otu_subtree,sample_names,
+                             taxon_names,data,permutations,recurse=False)
+        
+                            pvals = 'p_vals'
+    
+                        sig_nodes = 0
+    
+                        #Count number of significant nodes
+                        for pval in results_dict[pvals]:
+                            if pval < significance_level:
+                                sig_nodes += 1
+    
+                        num_nodes = write_results(results_dict,acc_dict,output_dir,basename,host_tree)
+                        result = True
+
                 except Exception as e:
                     print e
                     raise
