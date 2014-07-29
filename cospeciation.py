@@ -19,11 +19,12 @@ from StringIO import StringIO
 import numpy
 from random import shuffle
 
-from qiime.util import load_qiime_config, parse_command_line_parameters, get_options_lookup, parse_otu_table, make_option
+from qiime.util import load_qiime_config, parse_command_line_parameters, get_options_lookup, make_option
 from qiime.parse import parse_qiime_parameters, parse_taxonomy, parse_distmat, make_envs_dict
 from qiime.filter import filter_samples_from_otu_table, filter_samples_from_distance_matrix
 from qiime.format import format_otu_table
 
+from biom import load_table
 
 from cogent.parse.tree import DndParser
 from cogent.core.tree import PhyloNode
@@ -832,14 +833,14 @@ def reconcile_hosts_symbionts(otu_file, host_dist):
     return StringIO(filtered_otu_table_lines), host_dist_filtered
 
 
-def test_cospeciation(potu_table_fp, cotu_table_fp, host_tree_fp, mapping_fp, mapping_category, output_dir, significance_level, test, permutations, taxonomy_fp, force):
+def test_cospeciation(potu_table_fp, subcluster_dir, host_tree_fp, mapping_fp, mapping_category, output_dir, significance_level, test, permutations, taxonomy_fp, force):
 
     # Convert inputs to absolute paths
     output_dir = os.path.abspath(output_dir)
     host_tree_fp = os.path.abspath(host_tree_fp)
     mapping_fp = os.path.abspath(mapping_fp)
     potu_table_fp = os.path.abspath(potu_table_fp)
-    cotu_table_fp = os.path.abspath(cotu_table_fp)
+    subcluster_dir = os.path.abspath(subcluster_dir)
 
     # Check Host Tree
     try:
@@ -873,9 +874,12 @@ def test_cospeciation(potu_table_fp, cotu_table_fp, host_tree_fp, mapping_fp, ma
             exit(1)
 
     # get sample names present in potu table
-    sample_names, taxon_names, data, lineages = parse_otu_table(
-        open(potu_table_fp, 'Ur'))
-
+    # sample_names, taxon_names, data, lineages
+    potu_table = load_table(potu_table_fp)
+    sample_names = potu_table.ids()
+    potu_names = potu_table.ids(axis="observation")
+    lineages = [lm["taxonomy"] for lm in potu_table.metadata(axis="observation")]
+    
     # Process host input (tree/alignment/matrix) and take subtree of host
     # supertree
     host_tree, host_dist = make_dists_and_tree(sample_names, host_tree_fp)
@@ -883,127 +887,104 @@ def test_cospeciation(potu_table_fp, cotu_table_fp, host_tree_fp, mapping_fp, ma
     # At this point, the host tree and host dist matrix have the intersect of
     # the samples in the pOTU table and the input host tree/dm.
 
-    summary_file = open(
-        output_dir + '/' + 'cospeciation_results_summary.txt', 'w')
+    summary_file = open(os.path.join(output_dir,'cospeciation_results_summary.txt'), 'w')
     summary_file.write("sig_nodes\tnum_nodes\tfile\n")
 
     # Load taxonomic assignments for the pOTUs
     otu_to_taxonomy = parse_taxonomy(open(taxonomy_fp, 'Ur'))
 
     # test that you have a directory, otherwise exit.
-    if os.path.isdir(cotu_table_fp):
-        os.chdir(cotu_table_fp)
+    if os.path.isdir(subcluster_dir):
+        os.chdir(subcluster_dir)
         print os.getcwd()
         # run test on cOTU tables in directory.
         # use pOTU table to choose which cOTUs to use.
-        for line in open(potu_table_fp, 'r'):
+        for potu in potu_names:
             # ignore comment lines
-            if not line.startswith('#'):
-                # first element in OTU table tab-delimited row
-                cotu_basename = line.split('\t')[0]
 
-                print "Analyzing pOTU # " + cotu_basename
+            print "Analyzing pOTU # %s" % potu
 
-                cotu_table_fp = cotu_basename + '_seqs_otu_table.txt'
+            cotu_table_fp = os.path.join(subcluster_dir,potu,'otu_table.biom')
+            # Read in cOTU file
+            cotu_table = load_table(cotu_table_fp)
 
-                basename = cotu_basename + "_" + test
+            # Reconcile hosts in host DM and cOTU table
+            cotu_table_filtered, host_dist_filtered = reconcile_hosts_symbionts(
+                cotu_table, host_dist)
 
-                # Read in cOTU file
-                try:
-                    cotu_file = open(cotu_table_fp, 'Ur')
-                except:
-                    print "is this a real file?"
+            # Read in reconciled cOTU table
+            sample_names_filtered = cotu_table_filtered.ids()
+            cotu_names_filtered = cotu_table_filtered.ids(axis="observation")
 
-                # Reconcile hosts in host DM and cOTU table
-                filtered_cotu_file, host_dist_filtered = reconcile_hosts_symbionts(
-                    cotu_file, host_dist)
+            # exit loop if less than three hosts or cOTUs
+            if len(sample_names_filtered) < 3 or len(cotu_names_filtered) < 3:
+                print "Less than 3 hosts or cOTUs in cOTU table!"
+                continue
 
-                cotu_file.close()
+            # Import, filter, and root cOTU tree
+            cotu_tree_fp = os.path.join(potu,"rep_set.tre")
+            cotu_tree_file = open(cotu_tree_fp, 'r')
+            cotu_tree_unrooted = DndParser(cotu_tree_file, PhyloNode)
+            cotu_tree_file.close()
+            cotu_subtree_unrooted = cotu_tree_unrooted.getSubTree(cotu_names_filtered)
+            # root at midpoint
+            # Consider alternate step to go through and find closest DB seq
+            # to root?
+            cotu_subtree = cotu_subtree_unrooted.rootAtMidpoint()
 
-                # Read in reconciled cOTU table
-                sample_names, taxon_names, data, lineages = parse_otu_table(
-                    filtered_cotu_file)
-                filtered_cotu_file.close()
+            # filter host tree
+            host_subtree = host_tree.getSubTree(sample_names_filtered)
 
-                # exit loop if less than three hosts or cOTUs
-                if len(sample_names) < 3 or len(taxon_names) < 3:
-                    print "Less than 3 hosts or cOTUs in cOTU table!"
-                    continue
+            # Load up and filter cOTU sequences
+            aligned_otu_seqs = LoadSeqs(
+                os.path.join(potu,'seqs_rep_set_aligned.fasta'), moltype=DNA, label_to_name=lambda x: x.split()[0])
+            cotu_seqs_filtered = aligned_otu_seqs.takeSeqs(cotu_names_filtered)
 
-                # Import, filter, and root cOTU tree
-                otu_tree_fp = cotu_basename + "_seqs_rep_set.tre"
-                otu_tree_file = open(otu_tree_fp, 'r')
-                otu_tree_unrooted = DndParser(otu_tree_file, PhyloNode)
-                otu_tree_file.close()
-                otu_subtree_unrooted = otu_tree_unrooted.getSubTree(
-                    taxon_names)
-                # root at midpoint
-                # Consider alternate step to go through and find closest DB seq
-                # to root?
-                otu_subtree = otu_subtree_unrooted.rootAtMidpoint()
+            result = False
 
-                # filter host tree
-                host_subtree = host_tree.getSubTree(sample_names)
+            # Run recursive test on this pOTU:
+            # DEBUG:
+            # print 'in run_test_cospeciation'
 
-                # Load up and filter cOTU sequences
-                aligned_otu_seqs = LoadSeqs(
-                    cotu_basename + '_seqs_rep_set_aligned.fasta', moltype=DNA, label_to_name=lambda x: x.split()[0])
-                filtered_seqs = aligned_otu_seqs.takeSeqs(taxon_names)
+            # get number of hosts and cOTUs
+            htips = len(host_subtree.getTipNames())
+            stips = len(cotu_subtree.getTipNames())
 
-                result = False
+            # if test == 'unifrac':
+            #    print 'calling unifrac test'
+            #    results_dict, acc_dict = unifrac_recursive_test(host_subtree, cotu_subtree, sample_names_filtered,
+            #                                                   cotu_names_filtered, data, permutations)
 
-                # Run recursive test on this pOTU:
-                try:
-                    # DEBUG:
-                    # print 'in run_test_cospeciation'
+            if test == 'hommola_recursive':
 
-                    # get number of hosts and cOTUs
-                    htips = len(host_subtree.getTipNames())
-                    stips = len(otu_subtree.getTipNames())
+                # run recursive hommola test
+                results_dict, acc_dict = recursive_hommola(cotu_seqs_filtered, host_subtree, host_dist_filtered, cotu_subtree, cotu_table_filtered, permutations, recurse=True)
 
-                    if test == 'unifrac':
-                        print 'calling unifrac test'
-                        results_dict, acc_dict = unifrac_recursive_test(host_subtree, otu_subtree, sample_names,
-                                                                        taxon_names, data, permutations)
-                        pvals = 'p_vals'
 
-                    if test == 'hommola_recursive':
+            if test == 'hommola':
 
-                        # run recursive hommola test
-                        results_dict, acc_dict = recursive_hommola(filtered_seqs, host_subtree, host_dist_filtered, otu_subtree, sample_names,
-                                                                   taxon_names, data, permutations, recurse=True)
+                # run recursive hommola test
+                results_dict, acc_dict = recursive_hommola(cotu_seqs_filtered, host_subtree, host_dist_filtered, cotu_subtree, cotu_table_filtered, permutations, recurse=False)
 
-                        pvals = 'p_vals'
 
-                    if test == 'hommola':
+            sig_nodes = 0
 
-                        # run recursive hommola test
-                        results_dict, acc_dict = recursive_hommola(filtered_seqs, host_subtree, host_dist_filtered, otu_subtree, sample_names,
-                                                                   taxon_names, data, permutations, recurse=False)
+            # Count number of significant nodes
+            for pval in results_dict['p_vals']:
+                if pval < significance_level:
+                    sig_nodes += 1
 
-                        pvals = 'p_vals'
+            num_nodes = write_results(
+                results_dict, acc_dict, output_dir, basename, host_tree)
+            result = True
 
-                    sig_nodes = 0
-
-                    # Count number of significant nodes
-                    for pval in results_dict[pvals]:
-                        if pval < significance_level:
-                            sig_nodes += 1
-
-                    num_nodes = write_results(
-                        results_dict, acc_dict, output_dir, basename, host_tree)
-                    result = True
-
-                except Exception as e:
-                    print e
-                    raise
-                if result:
-                    outline = "{0}\t{1}\t{2}\t{3}".format(
-                        sig_nodes, num_nodes, cotu_basename, otu_to_taxonomy[cotu_basename]) + "\n"
-                else:
-                    outline = "ERROR\t\t" + file + "\n"
-                print outline
-                summary_file.write(outline)
+            if result:
+                outline = "{0}\t{1}\t{2}\t{3}".format(
+                    sig_nodes, num_nodes, cotu_basename, otu_to_taxonomy[cotu_basename]) + "\n"
+            else:
+                outline = "ERROR\t\t" + file + "\n"
+            print outline
+            summary_file.write(outline)
 
     else:
         print 'Not a directory.'
