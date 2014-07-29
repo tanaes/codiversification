@@ -204,8 +204,8 @@ dist_tuple_dict = {('SHAJ', 'SHAK'): 0.10750048520885,
 """
 
 
-def recursive_hommola(aligned_otu_seqs, host_subtree, host_dm, otu_tree, sample_names,
-                      taxon_names, otu_data, permutations=1000, recurse=False):
+def recursive_hommola(aligned_otu_seqs, host_subtree, host_dm, otu_tree, otu_table, 
+                permutations=1000, recurse=False):
     """
     Applies Hommola et al test of cospeciation recursively to OTU tree.
 
@@ -220,7 +220,11 @@ def recursive_hommola(aligned_otu_seqs, host_subtree, host_dm, otu_tree, sample_
     """
 
     # print "Performing recursive Hommola et al cospeciation test..."
-
+    
+    sample_names = otu_table.ids()
+    taxon_names = otu_table.ids(axis="observation")
+    otu_data = numpy.asarray([v for v in otu_table.iter_data(axis='sample')])
+    
     # calculate pairise distances between OTUs
 
     dist_calc = TN93Pair(DNA, alignment=aligned_otu_seqs)
@@ -752,11 +756,11 @@ def filter_otu_table_by_min(sample_names, taxon_names, data, lineages, min=1):
     return h_names, s_names, data, taxonomies
 
 
-def write_results(results_dict, acc_dict, output_dir, basename, host_tree):
+def write_results(results_dict, acc_dict, output_dir, potu, test, host_tree):
     # print results_dict
     # print acc_dict
 
-    results_file = open(output_dir + '/' + basename + '_results.txt', 'w')
+    results_file = open(join(output_dir,('%s_%s_results.txt' % (potu, test))), 'w')
 
     keys = results_dict.keys()
     acc_keys = acc_dict.keys()
@@ -971,12 +975,12 @@ def test_cospeciation(potu_table_fp, subcluster_dir, host_tree_fp, mapping_fp, m
                     sig_nodes += 1
 
             num_nodes = write_results(
-                results_dict, acc_dict, output_dir, basename, host_tree)
+                results_dict, acc_dict, output_dir, potu, test, host_tree)
             result = True
 
             if result:
                 outline = "{0}\t{1}\t{2}\t{3}".format(
-                    sig_nodes, num_nodes, cotu_basename, otu_to_taxonomy[cotu_basename]) + "\n"
+                    sig_nodes, num_nodes, potu, otu_to_taxonomy[potu]) + "\n"
             else:
                 outline = "ERROR\t\t" + file + "\n"
             print outline
