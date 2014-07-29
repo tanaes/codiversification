@@ -809,17 +809,10 @@ def reconcile_hosts_symbionts(cotu_table, host_dist):
 
     cotu_table_filtered = cotu_table.filter(host_dist[0], axis = 'sample', inplace = False)
     
-    # Now the cOTU table only has the samples present in the host dm
 
     # filter cOTU table again to get rid of absent cOTUs
 
-    otu_ids_to_keep = set(otu_table.ids(axis = 'observation'))
-
-
-    cotu_table_filtered = filter_otus_from_otu_table(cotu_table_filtered, otu_ids_to_keep, min_count = 1, max_count = float('inf'),
-                               min_samples = 1, max_samples = float('inf'),
-                               negate_ids_to_keep=False)
-
+    filtered_cotu_table.filter(lambda val, id_, metadata: 1 <= val.sum(), axis='observation', inplace = True)
     
     # Filter the host_dists to match the newly trimmed subtree
     # Note: this is requiring the modified filter_dist method which
