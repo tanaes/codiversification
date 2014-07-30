@@ -108,17 +108,6 @@ class HommolaTests(TestCase):
         self.assertEqual(sliced_host_dm,expected_host_dm)
         self.assertEqual(sliced_interaction,expected_interaction)
 
-
-    def test_get_dist(self):
-        labels = [0, 1, 1, 2, 3]
-        dists = array([[0, 2, 6, 3], [2, 0, 5, 4], [6, 5, 0, 7], [3, 4, 7, 0]])
-        index = [2, 3, 1, 0]
-
-        expected_vec = [7, 7, 5, 6, 0, 4, 3, 4, 3, 2]
-        actual_vec = get_dist(labels, dists, index)
-
-        self.assertEqual(actual_vec, expected_vec)
-
     def test_recursive_hommola(self):
         exp_h_nodes = LoadTree(treestring="((SHNT:0.0865915890705,(SHNP:0.0718459904766,SHNO:0.0718459904767):0.0147455985938):0.0267606238488,SHNW:0.113352212919);")
         exp_s_nodes = LoadTree(treestring="((1:0.00015,2:0.02813)0.894:0.00235,(0:0.02491,(3:0.00499,(4:0.00503,5:0.0025)0.927:0.00014)0.655:0.00787):0.00557);")
