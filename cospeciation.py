@@ -763,7 +763,7 @@ def write_results(results_dict, acc_dict, output_dir, potu, test, host_tree):
     # print results_dict
     # print acc_dict
 
-    results_file = open(join(output_dir,('%s_%s_results.txt' % (potu, test))), 'w')
+    results_file = open(os.path.join(output_dir,('%s_%s_results.txt' % (potu, test))), 'w')
 
     keys = results_dict.keys()
     acc_keys = acc_dict.keys()
@@ -808,21 +808,27 @@ def calc_h_span(host_tree, results_dict, i):
 
 def reconcile_hosts_symbionts(cotu_table, host_dist):
 
+    #DEBUG
+    print cotu_table
+    print host_dist
+
+    shared_hosts = set(cotu_table.ids(axis = 'sample')).intersection(host_dist[0])
+
     # filter cOTU table by samples present in host_tree/dm
 
-    cotu_table_filtered = cotu_table.filter(host_dist[0], axis = 'sample', inplace = False)
+    cotu_table_filtered = cotu_table.filter(shared_hosts, axis = 'sample', inplace = False)
     
 
     # filter cOTU table again to get rid of absent cOTUs
 
-    filtered_cotu_table.filter(lambda val, id_, metadata: 1 <= val.sum(), axis='observation', inplace = True)
+    cotu_table_filtered.filter(lambda val, id_, metadata: 1 <= val.sum(), axis='observation', inplace = True)
     
     # Filter the host_dists to match the newly trimmed subtree
     # Note: this is requiring the modified filter_dist method which
     # returns a native dm tuple rather than a string.
 
     host_dist_filtered = filter_samples_from_distance_matrix(
-        host_dist, sample_names, negate=True)
+        host_dist, cotu_table_filtered.ids(axis = 'sample'), negate=True)
 
     
 
@@ -935,7 +941,7 @@ def test_cospeciation(potu_table_fp, subcluster_dir, host_tree_fp, mapping_fp, m
             # Load up and filter cOTU sequences
             aligned_otu_seqs = LoadSeqs(
                 os.path.join(align_folder,'seqs_rep_set_aligned.fasta'), moltype=DNA, label_to_name=lambda x: x.split()[0])
-            cotu_seqs_filtered = aligned_otu_seqs.takeSeqs(cotu_names_filtered)
+            cotu_seqs_filtered = aligned_otu_seqs.takeSeqs(list(cotu_names_filtered))
 
             result = False
 
