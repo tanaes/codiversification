@@ -38,7 +38,7 @@ from cogent.maths.unifrac.fast_unifrac import fast_unifrac
 from cogent import LoadTree, LoadSeqs, DNA
 from cogent.util.dict2d import Dict2D, largest
 
-from skbio.math.stats.evolve.hommola import hommola_cospeciation, get_dist
+from skbio.math.stats.evolve.hommola import hommola_cospeciation
 
 def cogent_dist_to_qiime_dist(dist_tuple_dict):
     """
