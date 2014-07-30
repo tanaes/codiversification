@@ -45,13 +45,95 @@ from test_cospeciation import (hommola_cospeciation_test,
 
 
 
+class TopLevelTests(TestCase):
+    """Tests of top-level functions"""
+
+    def setUp(self):
+        """define some top-level data"""
+        self.aln=[]
+        self.aln.append(('SampleA','AAAAAAAAAAAAAAA'))
+        self.aln.append(('SampleB','CCCCCCC'))
+        self.aln.append(('SampleC','GGGGGGGGGGGGGG'))
+        
+        self.otus={'0':['SampleC'],'1':['SampleC','SampleA'],'2':['SampleB',\
+                                                                  'SampleA']}
+
+        self.prefs={}
+        self.prefs={'0':'SampleC','1':'SampleB'}
+
+    def test_take_(self):
+        """process_extract_samples: parses the cmd line and determines which
+        samples should be removed"""
+
+        self.sample_to_extract='SampleA,SampleB'
+        exp1={'0':'SampleA','1':'SampleB'}
+
+        obs1=process_extract_samples(self.sample_to_extract)
+
+        self.assertEqual(obs1,exp1)
+
+    def test_filter_otus(self):
+        """filter_otus: determines which sequences should be removed and
+        generates a new otus list"""
+
+        exp1=[('1',['SampleA']),('2',['SampleA'])]
+        obs1=filter_otus(self.otus,self.prefs)
+            
+        self.assertEqual(obs1,exp1)
+
+        
+    def test_filter_aln_by_otus(self):
+        """filter_aln_by_otus: determines which sequences to keep and which
+        sequences to remove"""
+
+        self.sample_to_extract='SampleA,SampleB'
+        exp1=[]
+        exp1.append(('SampleA','AAAAAAAAAAAAAAA'))
+        exp2=[]
+        exp2.append(('SampleB','CCCCCCC'))
+        exp2.append(('SampleC','GGGGGGGGGGGGGG'))
+        aln=LoadSeqs(data=self.aln,aligned=False)
+
+        obs1,obs2=filter_aln_by_otus(aln,self.prefs)
+
+        self.assertEqual(obs1,exp1)
+        self.assertEqual(obs2,exp2)
+
+
+    def test_cogent_dist_to_qiime_dist(self):
+
+        input_dict = {('a','b'): 4, ('a','c'): 5, ('a','d'): 6,
+            ('b','a'): 4, ('b','c'): 7, ('b','d'): 8,
+            ('c','a'): 5, ('c','b'): 7, ('c','d'): 9,
+            ('d','a'): 6, ('d','b'): 8,('d','c'): 9}
+        
+        # RUN METHOD TO BE TESTED
+        actual_output = cogent_dist_to_qiime_dist(input_dict)
+
+        # Generate expected output
+        matrix_order = ['a','b','c','d']
+        expected_output = []
+        for x in matrix_order:
+            row = []
+            for y in matrix_order:
+                if x != y:
+                    # use input tuple dist dict to populate expected output matrix
+                    row.append(input_dict[x,y])
+                else:
+                    # input tuple dist dict doesn't store the null self-distances
+                    row.append(0.)  
+            expected_output.append(row)
+        expected_output = (matrix_order, array(expected_output))
+
+        self.assertEqual(actual_output, expected_output)
+
 
 class HommolaTests(TestsHelper):
     # be careful with redefining the 'setUp' method, because it's
     # already defined in the superclass (TestsHelper), and you don't
     # want to fully override it here
 
-    def test_hommola_cospecitation_test(self):
+    def test_hommola_cospeciation_test(self):
         hdist = array([[0, 3, 8, 8, 9], [3, 0, 7, 7, 8], [
                       8, 7, 0, 6, 7], [8, 7, 6, 0, 3], [9, 8, 7, 3, 0]])
         pdist = array([[0, 5, 8, 8, 8], [5, 0, 7, 7, 7], [
@@ -84,13 +166,12 @@ class HommolaTests(TestsHelper):
     def test_recursive_hommola(self):
         
         aligned_otu_seqs = LoadSeqs(data=test_seqs)
-        dm = (['SHNO', 'SHNP', 'SHNT', 'SHNW'], array([[ 0., 0.14369198, 0.17318318, 0.22670443],
+        host_dm = (['SHNO', 'SHNP', 'SHNT', 'SHNW'], array([[ 0., 0.14369198, 0.17318318, 0.22670443],
        [ 0.14369198, 0., 0.17318318, 0.22670443],
        [ 0.17318318, 0.17318318, 0., 0.22670443],
        [ 0.22670443, 0.22670443, 0.22670443, 0.]]))
         host_subtree = LoadTree(treestring="((SHNT:0.0865915890705,(SHNP:0.0718459904766,SHNO:0.0718459904767):0.0147455985938):0.0267606238488,SHNW:0.113352212919);")
         otu_tree = LoadTree(treestring="(3:0.00499,(0:0.02491,(1:0.00015,2:0.02813)0.894:0.00792)0.655:0.00787,(4:0.00503,5:0.0025)0.927:0.00014);")
-        host_dm = dm
         otu_table = Table.from_tsv(StringIO(otu_table_lines), None, None, lambda x : x)
 
         results_dict, acc_dict = recursive_hommola(aligned_otu_seqs,host_subtree,host_dm,otu_tree,
@@ -117,7 +198,7 @@ GATTGAACGCTGGCGGCAGGCTTAACACATGCAAGTCGAGCGGGGAATTGTAGCTTGCTACATGACCTAGCGGCGGACGG
 >4
 GATTGAACGCTGGCGGCAGGCTTAACACATGCAAGTCGAGCGGGGAATTGTAGCTTGCTACATGACCTAGCGGCGGACGGGTGAGTAATACTTAGGAATCTGCCTATTAGTGGGGGACAACGTTCCGAAAGGAGCGCTAATACCGCATACGCCCTACGGGGGAAAGCAGGGGATCTTCGGACCTTGCGCTAATAGATGAGCCTAAGTCGGATTAGCTAGTTGGTAGGGTAAAGGCCTACCAAGGCGACGATCTGTAGCGGGTTTGAGAGGATGATCCGCCACACTGGGGGGTGAGACACGGCCCAGACTCCTACGGGAGGCAGCAGTGGGGAATATTGGACAATGGGCGCAAGCCTGATCCAGCCATGCCGCGTGTGTGAAGAAGGCCTTATGGTTGTAA---
 """
-=======
+
     def test_distmat_to_tree(self):
         pass
 

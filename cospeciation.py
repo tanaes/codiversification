@@ -222,7 +222,7 @@ def recursive_hommola(aligned_otu_seqs, host_subtree, host_dm, otu_tree, otu_tab
     
     sample_names = otu_table.ids()
     taxon_names = otu_table.ids(axis="observation")
-    otu_data = numpy.asarray([v for v in otu_table.iter_data(axis='sample')])
+    otu_data = numpy.asarray([v for v in otu_table.iter_data(axis='observation')])
     
     # calculate pairise distances between OTUs
 
