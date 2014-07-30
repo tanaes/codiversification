@@ -74,6 +74,44 @@ class TopLevelTests(TestCase):
 
         self.assertEqual(actual_output, expected_output)
 
+    def test_filter_dms(self):
+
+        # Test that filtering with all otu IDs returns original DMs
+        otu_subset = otu_dm[0]
+
+        expected_otu_dm = otu_dm
+        expected_host_dm = host_dm
+        expected_interaction = interaction
+
+        sliced_otu_dm, sliced_host_dm, sliced_interaction = filter_dms(otu_dm, host_dm, interaction, otu_subset)
+
+        self.assertEqual(sliced_otu_dm,expected_otu_dm)
+        self.assertEqual(sliced_host_dm,expected_host_dm)
+        self.assertEqual(sliced_interaction,expected_interaction)
+
+        # Test that filtering with a subset returns the correct subset
+
+        otu_subset = ['1','3','5']
+
+        expected_interaction = array([[1, 1, 0],
+                                    [0, 1, 1],
+                                    [0, 1, 0]])
+
+        expected_otu_dm = (['1','3','5'], array([[0., 0.02030519, 0.01781229],
+                                [0.02030519, 0., 0.0075794],
+                                [0.01781229, 0.0075794, 0.]]))
+
+        expected_host_dm = (['SHNO', 'SHNP', 'SHNT'], array([[0., 0.14369198, 0.17318318],
+                            [0.14369198, 0., 0.17318318],
+                            [0.17318318, 0.17318318, 0.]]))
+        
+        sliced_otu_dm, sliced_host_dm, sliced_interaction = filter_dms(otu_dm, host_dm, interaction, otu_subset)
+
+        self.assertEqual(sliced_otu_dm,expected_otu_dm)
+        self.assertEqual(sliced_host_dm,expected_host_dm)
+        self.assertEqual(sliced_interaction,expected_interaction)
+
+
 
 class HommolaTests(TestsHelper):
     # be careful with redefining the 'setUp' method, because it's
@@ -113,10 +151,7 @@ class HommolaTests(TestsHelper):
     def test_recursive_hommola(self):
         
         aligned_otu_seqs = LoadSeqs(data=test_seqs)
-        host_dm = (['SHNO', 'SHNP', 'SHNT', 'SHNW'], array([[ 0., 0.14369198, 0.17318318, 0.22670443],
-       [ 0.14369198, 0., 0.17318318, 0.22670443],
-       [ 0.17318318, 0.17318318, 0., 0.22670443],
-       [ 0.22670443, 0.22670443, 0.22670443, 0.]]))
+        
         host_subtree = LoadTree(treestring="((SHNT:0.0865915890705,(SHNP:0.0718459904766,SHNO:0.0718459904767):0.0147455985938):0.0267606238488,SHNW:0.113352212919);")
         otu_tree = LoadTree(treestring="(3:0.00499,(0:0.02491,(1:0.00015,2:0.02813)0.894:0.00792)0.655:0.00787,(4:0.00503,5:0.0025)0.927:0.00014);")
         otu_table = Table.from_tsv(StringIO(otu_table_lines), None, None, lambda x : x)
@@ -146,7 +181,25 @@ GATTGAACGCTGGCGGCAGGCTTAACACATGCAAGTCGAGCGGGGAATTGTAGCTTGCTACATGACCTAGCGGCGGACGG
 GATTGAACGCTGGCGGCAGGCTTAACACATGCAAGTCGAGCGGGGAATTGTAGCTTGCTACATGACCTAGCGGCGGACGGGTGAGTAATACTTAGGAATCTGCCTATTAGTGGGGGACAACGTTCCGAAAGGAGCGCTAATACCGCATACGCCCTACGGGGGAAAGCAGGGGATCTTCGGACCTTGCGCTAATAGATGAGCCTAAGTCGGATTAGCTAGTTGGTAGGGTAAAGGCCTACCAAGGCGACGATCTGTAGCGGGTTTGAGAGGATGATCCGCCACACTGGGGGGTGAGACACGGCCCAGACTCCTACGGGAGGCAGCAGTGGGGAATATTGGACAATGGGCGCAAGCCTGATCCAGCCATGCCGCGTGTGTGAAGAAGGCCTTATGGTTGTAA---
 """
 
+host_dm = (['SHNO', 'SHNP', 'SHNT', 'SHNW'], array([[ 0., 0.14369198, 0.17318318, 0.22670443],
+       [ 0.14369198, 0., 0.17318318, 0.22670443],
+       [ 0.17318318, 0.17318318, 0., 0.22670443],
+       [ 0.22670443, 0.22670443, 0.22670443, 0.]]))
 
+otu_dm = (['0', '1', '2', '3', '4', '5'], array([[ 0.        ,  0.03076205,  0.05527554,  0.03074287,  0.0360373 ,
+         0.03345466],
+       [ 0.03076205,  0.        ,  0.02837217,  0.02030519,  0.02035744,
+         0.01781229],
+       [ 0.05527554,  0.02837217,  0.        ,  0.04687171,  0.04699685,
+         0.0439181 ],
+       [ 0.03074287,  0.02030519,  0.04687171,  0.        ,  0.0101108 ,
+         0.0075794 ],
+       [ 0.0360373 ,  0.02035744,  0.04699685,  0.0101108 ,  0.        ,
+         0.00759866],
+       [ 0.03345466,  0.01781229,  0.0439181 ,  0.0075794 ,  0.00759866,
+         0.        ]]))
+
+interaction = array([[1, 0, 0, 0], [1, 1, 0, 0], [0, 0, 0, 1], [0, 1, 1, 0], [0, 1, 0, 0], [0, 1, 0, 0]])
 
 # run tests if called from command line
 if __name__ == "__main__":
