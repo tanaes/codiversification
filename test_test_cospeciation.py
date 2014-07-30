@@ -37,11 +37,7 @@ from cogent.util.dict2d import Dict2D, largest
 from cogent.util.unit_test import TestCase, main
 from cogent.util.array import array
 from test_test import TestsHelper
-''' NOT SURE WHY IT ONLY WORKS THIS WAY '''
-#from test_cospeciation import *
-from cospeciation import (hommola_cospeciation_test,
-                               get_dist, cogent_dist_to_qiime_dist,recursive_hommola)
-
+from cospeciation import *
 
 
 
