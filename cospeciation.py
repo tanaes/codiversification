@@ -200,7 +200,7 @@ dist_tuple_dict = {('SHAJ', 'SHAK'): 0.10750048520885,
        [ 0.        ,  0.        ,  0.01474341,  0.10750049,  0.10750049],
        [ 0.10750049,  0.10750049,  0.10750049,  0.        ,  0.04802493]]))
  
-"""
+""" 
 
 
 def recursive_hommola(aligned_otu_seqs, host_subtree, host_dm, otu_tree, otu_table, 
@@ -982,3 +982,100 @@ def test_cospeciation(potu_table_fp, subcluster_dir, host_tree_fp, mapping_fp, m
         print 'Not a directory.'
 
     summary_file.close()
+
+def otu_subcluster(output_dir, otu_map_fp, otu_table_fp, fasta_fp, parameter_fp, force):
+
+    from qiime.upstream import run_pick_de_novo_otus
+    # Check that specified input files do, in fact, exist
+    try:
+        with open(otu_map_fp) as f:
+            pass
+    except IOError as e:
+        print 'OTU Map could not be opened! Are you sure it is located at %s?' % otu_map_fp
+        exit(1)
+
+    # Check OTU Table
+    try:
+        with open(otu_table_fp) as f:
+            pass
+    except IOError as e:
+        print 'OTU Table could not be opened! Are you sure it is located at %s?' % otu_table_fp
+        exit(1)
+
+    # Check Sequences FASTA
+    try:
+        with open(fasta_fp) as f:
+            pass
+    except IOError as e:
+        print 'FASTA Sequences could not be opened! Are you sure it is located at %s?' % fasta_fp
+        exit(1)
+
+    # Verify that parameters file exists, if it is specified
+    if parameter_fp:
+        try:
+            parameter_f = open(parameter_fp)
+        except IOError:
+            raise IOError,\
+                "Can't open parameters file (%s). Does it exist? Do you have read access?"\
+                % parameter_fp
+        params = parse_qiime_parameters(parameter_f)
+    else:
+        params = parse_qiime_parameters([])
+        # empty list returns empty defaultdict for now
+
+    try:
+        makedirs(output_dir)
+    except OSError:
+        if force:
+            pass
+        else:
+            # Since the analysis can take quite a while, I put this check
+            # in to help users avoid overwriting previous output.
+            print "Output directory already exists. Please choose " +\
+                "a different directory, or force overwrite with --force"
+            exit(1)
+
+    # these are hardcoded from options selection in pick_otus_through_otu...py
+    command_handler = call_commands_serially
+    status_update_callback = no_status_updates
+    parallel = False
+
+    # get parent OTU map and load it into dict otu_to_seqid
+    otu_to_seqid = fields_to_dict(open(otu_map_fp, 'U'))
+
+    print "Loading seqs..."
+
+    # get the seqs.fna for all the sequences in the whole set
+    fasta_collection = LoadSeqs(fasta_fp, moltype=DNA, aligned=False,
+                                label_to_name=lambda x: x.split()[0])
+
+
+    # get the pOTUs in the filtered otu table
+    potu_table = load_table(otu_table_fp)
+
+    # for each of the OTUs in this filtered parent table,
+    for pOTU in potu_table.ids(axis = 'observation'):
+
+        print "Reclustering pOTU# %s..." % str(pOTU)
+
+        potu_dir = os.path.join(output_dir,str(pOTU))
+
+        seqs_in_otu = fasta_collection.takeSeqs(otu_to_seqid[pOTU])
+        output_fna_fp = os.path.join(potu_dir,'seqs.fasta')
+        seqs_in_otu.writeToFile(output_fna_fp)
+
+        # pre process seqs from pOTUs
+
+        try:
+            run_pick_de_novo_otus(
+                output_fna_fp,
+                potu_dir,
+                command_handler=command_handler,
+                params=params,
+                qiime_config=qiime_config,
+                parallel=parallel,
+                status_update_callback=status_update_callback,
+                run_assign_tax=False)
+        except Exception, err:
+            stderr.write('ERROR: %s\n' % str(err))
+            # return 1
