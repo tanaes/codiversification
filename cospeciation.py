@@ -803,27 +803,17 @@ def calc_h_span(host_tree, results_dict, i):
     return h_span
 
 
-def reconcile_hosts_symbionts(otu_file, host_dist):
+def reconcile_hosts_symbionts(cotu_table, host_dist):
 
     # filter cOTU table by samples present in host_tree/dm
 
-    filtered_cotu_table = filter_samples_from_otu_table(otu_file,
-                                                        host_dist[0],
-                                                        negate=True)
+    cotu_table_filtered = cotu_table.filter(host_dist[0], axis = 'sample', inplace = False)
+    
 
-    # Now the cOTU table only has the samples present in the host dm
+    # filter cOTU table again to get rid of absent cOTUs
 
-    # parse the filtered cOTU table
-    sample_names, taxon_names, data, lineages = parse_otu_table(
-        filtered_cotu_table)
-
-    # filter cOTU table again because skip_empty doesn't seem to be
-    # working in format_otu_table called from
-    # filter_samples_from_otu_table
-
-    sample_names, taxon_names, data, lineages = filter_otu_table_by_min(
-        sample_names, taxon_names, data, lineages, min=1)
-
+    filtered_cotu_table.filter(lambda val, id_, metadata: 1 <= val.sum(), axis='observation', inplace = True)
+    
     # Filter the host_dists to match the newly trimmed subtree
     # Note: this is requiring the modified filter_dist method which
     # returns a native dm tuple rather than a string.
@@ -831,10 +821,9 @@ def reconcile_hosts_symbionts(otu_file, host_dist):
     host_dist_filtered = filter_samples_from_distance_matrix(
         host_dist, sample_names, negate=True)
 
-    filtered_otu_table_lines = format_otu_table(
-        sample_names, taxon_names, data, lineages)
+    
 
-    return StringIO(filtered_otu_table_lines), host_dist_filtered
+    return cotu_table_filtered, host_dist_filtered
 
 
 def test_cospeciation(potu_table_fp, subcluster_dir, host_tree_fp, mapping_fp, mapping_category, output_dir, significance_level, test, permutations, taxonomy_fp, force):
