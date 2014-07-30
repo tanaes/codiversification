@@ -404,7 +404,7 @@ def unifrac_recursive_test(ref_tree, tree, sample_names,
     return (results_dict, acc_dict)
 
 
-def make_dists_and_tree(sample_names, host_fp):
+def make_dists_and_tree(sample_names, host_fp, host_input_type):
     """
     This routine reads in your host information (tree, alignment, or distance 
     matrix) and converts it to a distance matrix and a tree. These are subsetted
@@ -418,15 +418,15 @@ def make_dists_and_tree(sample_names, host_fp):
     hostf.close()
 
     # Attempt to parse the host tree/alignment/distance matrix
-    if isTree(host_str):
+    if host_input_type == "tree":
         host_tree, host_dist = processTree(host_str)
         print "Input is tree"
 
-    elif isAlignment(host_str):
+    elif host_input_type == "alignment":
         host_tree, host_dist = processAlignment(host_str)
         print "Input is alignment"
 
-    elif isMatrix(host_str):
+    elif host_input_type == "distances":
         host_tree, host_dist = processMatrix(host_str)
         print "Input is distance matrix"
 
@@ -557,41 +557,6 @@ def filter_dms(otu_dm, host_dm, interaction, otu_subset):
     sliced_interaction = i_slice
 
     return(sliced_otu_dm, sliced_host_dm, sliced_interaction)
-
-
-def isTree(fstr):
-
-    try:
-        LoadTree(treestring=fstr)
-        return True
-
-    except:
-        return False
-
-
-def isAlignment(fstr):
-
-    try:
-        LoadSeqs(data=fstr)
-        return True
-
-    except:
-        return False
-
-
-def isMatrix(fstr):
-
-    try:
-        result = parse_distmat(fstr.splitlines())
-        if result[0] == None:
-            return False
-
-        else:
-            return True
-
-    except:
-        return False
-
 
 def processTree(fstr):
     # Attempt to load input as tree
@@ -740,7 +705,7 @@ def reconcile_hosts_symbionts(cotu_table, host_dist):
     return cotu_table_filtered, host_dist_filtered
 
 
-def test_cospeciation(potu_table_fp, subcluster_dir, host_tree_fp, mapping_fp, mapping_category, output_dir, significance_level, test, permutations, taxonomy_fp, force):
+def test_cospeciation(potu_table_fp, subcluster_dir, host_tree_fp, mapping_fp, mapping_category, output_dir, significance_level, test, permutations, taxonomy_fp, host_input_type, force):
 
     # Convert inputs to absolute paths
     output_dir = os.path.abspath(output_dir)
@@ -789,7 +754,7 @@ def test_cospeciation(potu_table_fp, subcluster_dir, host_tree_fp, mapping_fp, m
     
     # Process host input (tree/alignment/matrix) and take subtree of host
     # supertree
-    host_tree, host_dist = make_dists_and_tree(sample_names, host_tree_fp)
+    host_tree, host_dist = make_dists_and_tree(sample_names, host_tree_fp, host_input_type)
 
     # At this point, the host tree and host dist matrix have the intersect of
     # the samples in the pOTU table and the input host tree/dm.

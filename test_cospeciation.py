@@ -95,8 +95,6 @@ script_info['required_options'] = [
                 help='the input OTU table file, or directory of files [REQUIRED]'),
     make_option('-p', '--potu_table_fp',
                 help='the input pOTU table file [REQUIRED]'),
-    make_option('-a', '--host_tree_fp',
-                help='a newick-formatted tree with samples as tips OR a FASTA sequence alignment OR a distance matrix [REQUIRED]'),
     make_option('-o', '--output_dir',
                 help='path to output directory [REQUIRED]'),
     make_option('-T', '--test',
@@ -104,9 +102,15 @@ script_info['required_options'] = [
     make_option('-t', '--taxonomy_fp',
                 help='parent OTU taxonomy filepath [REQUIRED]'),
     make_option('-m', '--mapping_fp',
-                help='path to the metadata mapping file [REQUIRED]'),
+                help='path to the metadata mapping file [REQUIRED]')
 ]
 script_info['optional_options'] = [
+    make_option('--host_tree_fp',
+              help='a newick-formatted tree with samples as tips [This, a host alignment, or a host distance matrix is required]'),
+    make_option('--host_align_fp',
+              help='A FASTA sequence alignment of the hosts [This, a host tree, or a host distance matrix is required]'),
+    make_option('--host_dist_fp',
+              help='A distance matrix specifying some pairwise distance -- not necessarily genetic -- between hosts [This, a host tree, or a host alignment is required]'),
     make_option('-c', '--mapping_category',
                 help='map category for which to pool samples' +
                 '[default: %default]',
@@ -132,7 +136,7 @@ def main():
     option_parser, opts, args = parse_command_line_parameters(**script_info)
     potu_table_fp = opts.potu_table_fp
     cotu_table_fp = opts.cotu_table_fp
-    host_tree_fp = opts.host_tree_fp
+    host_input_type = opts.host_input_type
     mapping_fp = opts.mapping_fp
     mapping_category = opts.mapping_category
     output_dir = opts.output_dir
@@ -140,8 +144,21 @@ def main():
     test = opts.test
     permutations = int(opts.permutations)
     taxonomy_fp = opts.taxonomy_fp
-    test_cospeciation(potu_table_fp, cotu_table_fp, host_tree_fp, mapping_fp, mapping_category,
-                      output_dir, significance_level, test, permutations, taxonomy_fp, opts.force)
+
+    if(opts.host_tree_fp):
+        host_fp = opts.host_tree_fp
+        host_input_type = "tree"
+    elif(opts.host_align_fp):
+        host_fp = opts.host_align_fp
+        host_input_type = "alignment"
+    elif(opts.host_dist_fp):
+        host_fp = opts.host_dist_fp
+        host_input_type = "distances"
+    else:
+        sys.exit("Must specify path to a host tree (--host_tree_fp), host alignment (--host_align_fp), or host distance matrix (--host_dist_fp).")
+
+    test_cospeciation(potu_table_fp, cotu_table_fp, host_fp, mapping_fp, mapping_category,
+                      output_dir, significance_level, test, permutations, taxonomy_fp, host_input_type, opts.force)
 
 if __name__ == "__main__":
     main()
