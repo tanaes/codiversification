@@ -809,8 +809,8 @@ def calc_h_span(host_tree, results_dict, i):
 def reconcile_hosts_symbionts(cotu_table, host_dist):
 
     #DEBUG
-    print cotu_table
-    print host_dist
+    #print cotu_table
+    #print host_dist
 
     shared_hosts = set(cotu_table.ids(axis = 'sample')).intersection(host_dist[0])
 
