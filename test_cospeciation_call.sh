@@ -19,7 +19,7 @@ echo 'Test summarized by host species'
 python ./test_cospeciation.py \
 -i Example_output/new_cOTUs \
 -p Example_input/otu_table_rarified_filtered.biom \
--a Example_input/host_tree_SampleID.tre \
+--host_tree_fp Example_input/host_tree_SampleID.tre \
 -o Example_output/new_hommola_SampleID \
 -T hommola \
 -t Example_input/taxonomy.txt \
