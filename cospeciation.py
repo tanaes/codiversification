@@ -22,6 +22,7 @@ from random import shuffle
 from qiime.util import load_qiime_config, parse_command_line_parameters, get_options_lookup, make_option
 from qiime.parse import parse_qiime_parameters, parse_taxonomy, parse_distmat, make_envs_dict
 from qiime.filter import filter_samples_from_otu_table, filter_samples_from_distance_matrix
+from qiime.workflow.upstream import run_pick_de_novo_otus
 
 from biom import load_table
 
@@ -985,7 +986,6 @@ def test_cospeciation(potu_table_fp, subcluster_dir, host_tree_fp, mapping_fp, m
 
 def otu_subcluster(output_dir, otu_map_fp, otu_table_fp, fasta_fp, parameter_fp, force):
 
-    from qiime.upstream import run_pick_de_novo_otus
     # Check that specified input files do, in fact, exist
     try:
         with open(otu_map_fp) as f:

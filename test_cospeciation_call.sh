@@ -8,19 +8,19 @@ echo 'Test summarized by host species'
 
 python ./otu_subcluster.py \
 -i Example_input/otu_map.txt \
--o Example_output/cOTUs_test \
+-o Example_output/new_cOTUs \
 -f Example_input/seqs.fna \
 -p Example_input/99_fasttree_muscle_params.txt \
--t Example_input/otu_table_rarified_filtered.txt \
+-t Example_input/otu_table_rarified_filtered.biom \
 --force
 
 #run cospeciation test on each pOTU
 
 python ./test_cospeciation.py \
--i Example_output/cOTUs_test \
--p Example_input/otu_table_rarified_filtered.txt \
+-i Example_output/new_cOTUs \
+-p Example_input/otu_table_rarified_filtered.biom \
 -a Example_input/host_tree_SampleID.tre \
--o Example_output/hommola_test_SampleID \
+-o Example_output/new_hommola_SampleID \
 -T hommola \
 -t Example_input/taxonomy.txt \
 -m Example_input/sample_map.txt \
