@@ -255,12 +255,13 @@ def sub_otu_prep(input_fp,
 
 def otu_subcluster(output_dir, otu_map_fp, otu_table_fp, fasta_fp, parameter_fp, force):
 
+    from qiime.upstream import run_pick_de_novo_otus
     # Check that specified input files do, in fact, exist
     try:
         with open(otu_map_fp) as f:
             pass
     except IOError as e:
-        print 'OTU Map could not be opened! Are you sure it is located at ' + otu_map_fp + '  ?'
+        print 'OTU Map could not be opened! Are you sure it is located at %s?' % otu_map_fp
         exit(1)
 
     # Check OTU Table
@@ -268,7 +269,7 @@ def otu_subcluster(output_dir, otu_map_fp, otu_table_fp, fasta_fp, parameter_fp,
         with open(otu_table_fp) as f:
             pass
     except IOError as e:
-        print 'OTU Table could not be opened! Are you sure it is located at ' + otu_table_fp + '  ?'
+        print 'OTU Table could not be opened! Are you sure it is located at %s?' % otu_table_fp
         exit(1)
 
     # Check Sequences FASTA
@@ -276,7 +277,7 @@ def otu_subcluster(output_dir, otu_map_fp, otu_table_fp, fasta_fp, parameter_fp,
         with open(fasta_fp) as f:
             pass
     except IOError as e:
-        print 'FASTA Sequences could not be opened! Are you sure it is located at ' + fasta_fp + '  ?'
+        print 'FASTA Sequences could not be opened! Are you sure it is located at %s?' % fasta_fp
         exit(1)
 
     # Verify that parameters file exists, if it is specified
@@ -318,39 +319,33 @@ def otu_subcluster(output_dir, otu_map_fp, otu_table_fp, fasta_fp, parameter_fp,
     fasta_collection = LoadSeqs(fasta_fp, moltype=DNA, aligned=False,
                                 label_to_name=lambda x: x.split()[0])
 
-    # testing code:
-    # print "OTU dict keys:"
 
-    # print otu_to_seqid.keys()[0:3]
-
-    #pause = raw_input('Pause!')
-
-    print "Parsing OTU table..."
-
-    # get the OTUs in the filtered otu table
-    sample_names, passed_otus, data, lineages = parse_otu_table(
-        open(otu_table_fp, 'Ur'))
+    # get the pOTUs in the filtered otu table
+    potu_table = load_table(otu_table_fp)
 
     # for each of the OTUs in this filtered parent table,
-    for OTU in passed_otus:
+    for pOTU in potu_table.ids(axis = 'observation'):
 
-        print "Reclustering OTU# " + str(OTU) + "..."
+        print "Reclustering pOTU# %s..." % str(pOTU)
 
-        seqs_in_otu = fasta_collection.takeSeqs(otu_to_seqid[OTU])
-        output_fna_fp = output_dir + '/' + str(OTU) + '_seqs.fasta'
+        potu_dir = os.path.join(output_dir,str(pOTU))
+
+        seqs_in_otu = fasta_collection.takeSeqs(otu_to_seqid[pOTU])
+        output_fna_fp = os.path.join(potu_dir,'seqs.fasta')
         seqs_in_otu.writeToFile(output_fna_fp)
 
-        # pre process seqs from OTUs
+        # pre process seqs from pOTUs
 
         try:
-            sub_otu_prep(
+            run_pick_de_novo_otus(
                 output_fna_fp,
-                output_dir,
+                potu_dir,
                 command_handler=command_handler,
                 params=params,
                 qiime_config=qiime_config,
                 parallel=parallel,
-                status_update_callback=status_update_callback)
+                status_update_callback=status_update_callback,
+                run_assign_tax=False)
         except Exception, err:
             stderr.write('ERROR: %s\n' % str(err))
             # return 1
