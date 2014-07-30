@@ -16,7 +16,7 @@ __status__ = "Experimental"
 
 # importing modules
 from sys import exit, stderr, stdout
-from subcluster import *
+from cospeciation import otu_subcluster
 
 import os
 import sys
