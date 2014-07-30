@@ -136,7 +136,6 @@ def main():
     option_parser, opts, args = parse_command_line_parameters(**script_info)
     potu_table_fp = opts.potu_table_fp
     cotu_table_fp = opts.cotu_table_fp
-    host_input_type = opts.host_input_type
     mapping_fp = opts.mapping_fp
     mapping_category = opts.mapping_category
     output_dir = opts.output_dir
