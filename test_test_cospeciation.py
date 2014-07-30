@@ -36,17 +36,19 @@ from cogent.util.dict2d import Dict2D, largest
 # tests/test_maths/test_stats (actual file test_test.py)
 from cogent.util.unit_test import TestCase, main
 from cogent.util.array import array
-from test_test import *
+from test_test import TestsHelper
 ''' NOT SURE WHY IT ONLY WORKS THIS WAY '''
 #from test_cospeciation import *
-from test_cospeciation import (hommola_cospeciation_test,
+from cospeciation import (hommola_cospeciation_test,
                                get_dist, cogent_dist_to_qiime_dist,recursive_hommola)
 
 
 
 
-class TopLevelTests(TestCase):
-    """Tests of top-level functions"""
+class HommolaTests(TestsHelper):
+    # be careful with redefining the 'setUp' method, because it's
+    # already defined in the superclass (TestsHelper), and you don't
+    # want to fully override it here
     def test_cogent_dist_to_qiime_dist(self):
 
         input_dict = {('a','b'): 4, ('a','c'): 5, ('a','d'): 6,
@@ -73,12 +75,6 @@ class TopLevelTests(TestCase):
         expected_output = (matrix_order, array(expected_output))
 
         self.assertEqual(actual_output, expected_output)
-
-
-class HommolaTests(TestsHelper):
-    # be careful with redefining the 'setUp' method, because it's
-    # already defined in the superclass (TestsHelper), and you don't
-    # want to fully override it here
 
     def test_hommola_cospeciation_test(self):
         hdist = array([[0, 3, 8, 8, 9], [3, 0, 7, 7, 8], [
@@ -111,9 +107,14 @@ class HommolaTests(TestsHelper):
         self.assertEqual(actual_vec, expected_vec)
 
     def test_recursive_hommola(self):
-        
+        exp_h_nodes = LoadTree(treestring="((SHNT:0.0865915890705,(SHNP:0.0718459904766,SHNO:0.0718459904767):0.0147455985938):0.0267606238488,SHNW:0.113352212919);")
+        exp_s_nodes = LoadTree(treestring="((1:0.00015,2:0.02813)0.894:0.00235,(0:0.02491,(3:0.00499,(4:0.00503,5:0.0025)0.927:0.00014)0.655:0.00787):0.00557);")
+        exp_s_tips = [6]
+        exp_h_tips = [4]
+        exp_r_vals = 0.49739280928
+
         aligned_otu_seqs = LoadSeqs(data=test_seqs)
-        host_dm = (['SHNO', 'SHNP', 'SHNT', 'SHNW'], array([[ 0., 0.14369198, 0.17318318, 0.22670443],
+        self.host_dm = (['SHNO', 'SHNP', 'SHNT', 'SHNW'], array([[ 0., 0.14369198, 0.17318318, 0.22670443],
        [ 0.14369198, 0., 0.17318318, 0.22670443],
        [ 0.17318318, 0.17318318, 0., 0.22670443],
        [ 0.22670443, 0.22670443, 0.22670443, 0.]]))
@@ -121,12 +122,14 @@ class HommolaTests(TestsHelper):
         otu_tree = LoadTree(treestring="(3:0.00499,(0:0.02491,(1:0.00015,2:0.02813)0.894:0.00792)0.655:0.00787,(4:0.00503,5:0.0025)0.927:0.00014);")
         otu_table = Table.from_tsv(StringIO(otu_table_lines), None, None, lambda x : x)
 
-        results_dict, acc_dict = recursive_hommola(aligned_otu_seqs,host_subtree,host_dm,otu_tree,
+        results_dict, acc_dict = recursive_hommola(aligned_otu_seqs,host_subtree,self.host_dm,otu_tree,
                         otu_table,permutations=1000,recurse=False)
-        
-        self.assertEqual(results_dict, expected_results)
-        
-        self.assertEqual(acc_dict,expected_acc)
+        self.assertEqual(results_dict['s_tips'],exp_s_tips)
+        self.assertEqual(results_dict['h_tips'],exp_h_tips)
+        self.assertEqual(str(results_dict['s_nodes'][0].rootAtMidpoint()),str(exp_s_nodes.rootAtMidpoint()))
+        self.assertEqual(str(results_dict['h_nodes'][0].rootAtMidpoint()),str(exp_h_nodes.rootAtMidpoint()))
+        self.assertAlmostEqual(acc_dict['r_vals'][0],exp_r_vals)
+
         
     def test_distmat_to_tree(self):
         pass
