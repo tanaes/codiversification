@@ -16,15 +16,15 @@ python ./otu_subcluster.py \
 
 #run cospeciation test on each pOTU
 
-python ./test_cospeciation.py \
--i Example_output/new_cOTUs \
--p Example_input/otu_table_rarified_filtered.biom \
--a Example_input/host_tree_SampleID.tre \
--o Example_output/new_hommola_SampleID \
--T hommola \
--t Example_input/taxonomy.txt \
--m Example_input/sample_map.txt \
---force
+# python ./test_cospeciation.py \
+# -i Example_output/new_cOTUs \
+# -p Example_input/otu_table_rarified_filtered.biom \
+# -a Example_input/host_tree_SampleID.tre \
+# -o Example_output/new_hommola_SampleID \
+# -T hommola \
+# -t Example_input/taxonomy.txt \
+# -m Example_input/sample_map.txt \
+# --force
 
 #summarize results & run multiple test correction
 

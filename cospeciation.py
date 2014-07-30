@@ -20,9 +20,11 @@ import numpy
 from random import shuffle
 
 from qiime.util import load_qiime_config, parse_command_line_parameters, get_options_lookup, make_option
-from qiime.parse import parse_qiime_parameters, parse_taxonomy, parse_distmat, make_envs_dict
+from qiime.parse import parse_qiime_parameters, parse_taxonomy, parse_distmat, make_envs_dict, fields_to_dict
 from qiime.filter import filter_samples_from_otu_table, filter_samples_from_distance_matrix
 from qiime.workflow.upstream import run_pick_de_novo_otus
+
+from qiime.workflow.util import call_commands_serially, no_status_updates
 
 from biom import load_table
 
@@ -986,6 +988,8 @@ def test_cospeciation(potu_table_fp, subcluster_dir, host_tree_fp, mapping_fp, m
 
 def otu_subcluster(output_dir, otu_map_fp, otu_table_fp, fasta_fp, parameter_fp, force):
 
+    qiime_config = load_qiime_config()
+
     # Check that specified input files do, in fact, exist
     try:
         with open(otu_map_fp) as f:
@@ -1024,7 +1028,7 @@ def otu_subcluster(output_dir, otu_map_fp, otu_table_fp, fasta_fp, parameter_fp,
         # empty list returns empty defaultdict for now
 
     try:
-        makedirs(output_dir)
+        os.makedirs(output_dir)
     except OSError:
         if force:
             pass
@@ -1060,22 +1064,35 @@ def otu_subcluster(output_dir, otu_map_fp, otu_table_fp, fasta_fp, parameter_fp,
 
         potu_dir = os.path.join(output_dir,str(pOTU))
 
+        try:
+            os.makedirs(potu_dir)
+        except OSError:
+            if force:
+                pass
+            else:
+                # Since the analysis can take quite a while, I put this check
+                # in to help users avoid overwriting previous output.
+                print "Output directory already exists. Please choose " +\
+                    "a different directory, or force overwrite with --force"
+                exit(1)
+
+
         seqs_in_otu = fasta_collection.takeSeqs(otu_to_seqid[pOTU])
         output_fna_fp = os.path.join(potu_dir,'seqs.fasta')
         seqs_in_otu.writeToFile(output_fna_fp)
 
         # pre process seqs from pOTUs
 
-        try:
-            run_pick_de_novo_otus(
-                output_fna_fp,
-                potu_dir,
-                command_handler=command_handler,
-                params=params,
-                qiime_config=qiime_config,
-                parallel=parallel,
-                status_update_callback=status_update_callback,
-                run_assign_tax=False)
-        except Exception, err:
-            stderr.write('ERROR: %s\n' % str(err))
+        #try:
+        run_pick_de_novo_otus(
+            output_fna_fp,
+            potu_dir,
+            command_handler=command_handler,
+            params=params,
+            qiime_config=qiime_config,
+            parallel=parallel,
+            status_update_callback=status_update_callback,
+            run_assign_tax=False)
+        #except Exception, err:
+        #    sys.stderr.write('ERROR: %s\n' % str(err))
             # return 1
