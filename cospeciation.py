@@ -13,6 +13,7 @@ __status__ = "Experimental"
 
 
 import os
+import glob
 import sys
 import re
 from StringIO import StringIO
@@ -917,7 +918,7 @@ def test_cospeciation(potu_table_fp, subcluster_dir, host_tree_fp, mapping_fp, m
                 continue
 
             # Import, filter, and root cOTU tree
-            cotu_tree_fp = os.path.join(potu,"rep_set.tre")
+            cotu_tree_fp = os.path.join(subcluster_dir,potu,"rep_set.tre")
             cotu_tree_file = open(cotu_tree_fp, 'r')
             cotu_tree_unrooted = DndParser(cotu_tree_file, PhyloNode)
             cotu_tree_file.close()
@@ -929,10 +930,11 @@ def test_cospeciation(potu_table_fp, subcluster_dir, host_tree_fp, mapping_fp, m
 
             # filter host tree
             host_subtree = host_tree.getSubTree(sample_names_filtered)
-
+            
+            align_folder = glob.glob(os.path.join(subcluster_dir,potu,'*aligned_seqs'))[0]
             # Load up and filter cOTU sequences
             aligned_otu_seqs = LoadSeqs(
-                os.path.join(potu,'seqs_rep_set_aligned.fasta'), moltype=DNA, label_to_name=lambda x: x.split()[0])
+                os.path.join(align_folder,'seqs_rep_set_aligned.fasta'), moltype=DNA, label_to_name=lambda x: x.split()[0])
             cotu_seqs_filtered = aligned_otu_seqs.takeSeqs(cotu_names_filtered)
 
             result = False
