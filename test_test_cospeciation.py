@@ -51,7 +51,7 @@ class HommolaTests(TestsHelper):
     # already defined in the superclass (TestsHelper), and you don't
     # want to fully override it here
 
-    def test_hommola_cospeciation_test(self):
+    def test_hommola_cospecitation_test(self):
         hdist = array([[0, 3, 8, 8, 9], [3, 0, 7, 7, 8], [
                       8, 7, 0, 6, 7], [8, 7, 6, 0, 3], [9, 8, 7, 3, 0]])
         pdist = array([[0, 5, 8, 8, 8], [5, 0, 7, 7, 7], [
@@ -117,6 +117,10 @@ GATTGAACGCTGGCGGCAGGCTTAACACATGCAAGTCGAGCGGGGAATTGTAGCTTGCTACATGACCTAGCGGCGGACGG
 >4
 GATTGAACGCTGGCGGCAGGCTTAACACATGCAAGTCGAGCGGGGAATTGTAGCTTGCTACATGACCTAGCGGCGGACGGGTGAGTAATACTTAGGAATCTGCCTATTAGTGGGGGACAACGTTCCGAAAGGAGCGCTAATACCGCATACGCCCTACGGGGGAAAGCAGGGGATCTTCGGACCTTGCGCTAATAGATGAGCCTAAGTCGGATTAGCTAGTTGGTAGGGTAAAGGCCTACCAAGGCGACGATCTGTAGCGGGTTTGAGAGGATGATCCGCCACACTGGGGGGTGAGACACGGCCCAGACTCCTACGGGAGGCAGCAGTGGGGAATATTGGACAATGGGCGCAAGCCTGATCCAGCCATGCCGCGTGTGTGAAGAAGGCCTTATGGTTGTAA---
 """
+=======
+    def test_distmat_to_tree(self):
+        pass
+
 
 # run tests if called from command line
 if __name__ == "__main__":
