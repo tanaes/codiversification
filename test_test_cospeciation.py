@@ -36,12 +36,11 @@ from cogent.util.dict2d import Dict2D, largest
 # tests/test_maths/test_stats (actual file test_test.py)
 from cogent.util.unit_test import TestCase, main
 from cogent.util.array import array
-from test_test import TestsHelper
 from cospeciation import *
 
 
 
-class HommolaTests(TestsHelper):
+class HommolaTests(TestCase):
     # be careful with redefining the 'setUp' method, because it's
     # already defined in the superclass (TestsHelper), and you don't
     # want to fully override it here
@@ -109,26 +108,6 @@ class HommolaTests(TestsHelper):
         self.assertEqual(sliced_host_dm,expected_host_dm)
         self.assertEqual(sliced_interaction,expected_interaction)
 
-
-    def test_hommola_cospeciation_test(self):
-        hdist = array([[0, 3, 8, 8, 9], [3, 0, 7, 7, 8], [
-                      8, 7, 0, 6, 7], [8, 7, 6, 0, 3], [9, 8, 7, 3, 0]])
-        pdist = array([[0, 5, 8, 8, 8], [5, 0, 7, 7, 7], [
-                      8, 7, 0, 4, 4], [8, 7, 4, 0, 2], [8, 7, 4, 2, 0]])
-        matrix = array([[1, 0, 0, 0, 0], [0, 1, 0, 0, 0], [
-                       0, 0, 1, 0, 0], [0, 0, 0, 1, 0], [0, 0, 0, 1, 1]])
-
-        # this matrix was picked because it will generate an r value that's less than
-        # a standard deviation away from the mean of the normal distribution of
-        # r vals
-        randomized_matrix = array(
-            [[0, 0, 0, 1, 0], [0, 0, 0, 0, 1], [1, 0, 0, 0, 0], [1, 0, 0, 0, 0], [0, 0, 0, 0, 1]])
-
-        self.assertCorrectPValue(0.0, 0.05, hommola_cospeciation_test,
-                                 (hdist, pdist, matrix, 1000))
-
-        self.assertCorrectPValue(0.2, 0.8, hommola_cospeciation_test,
-                                 (hdist, pdist, randomized_matrix, 1000))
 
     def test_get_dist(self):
         labels = [0, 1, 1, 2, 3]
