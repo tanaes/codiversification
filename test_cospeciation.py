@@ -161,7 +161,7 @@ def main():
 
     # Convert inputs to absolute paths
     output_dir = os.path.abspath(output_dir)
-    host_fp = os.path.abspath(host_tree_fp)
+    host_fp = os.path.abspath(host_fp)
     mapping_fp = os.path.abspath(mapping_fp)
     potu_table_fp = os.path.abspath(potu_table_fp)
     subcluster_dir = os.path.abspath(subcluster_dir)
