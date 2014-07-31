@@ -438,6 +438,7 @@ def calc_h_span(host_tree, results_dict, i):
 
 def add_corrections_to_results_dict(results_dict, results_header):
     # Takes a results dictionary and adds multiple test corrections.
+
     pvals = []
     potus = []
 
@@ -446,12 +447,25 @@ def add_corrections_to_results_dict(results_dict, results_header):
         pvals.append(results_dict[potu_name][results_header.index('p_vals')])
     
     b_h_fdr_p_vals = benjamini_hochberg_step_down(pvals)
-    bonferroni_p_vals = bonferroni_correction(pvals)
+    bonferonni_p_vals = bonferroni_correction(pvals)
     fdr_p_vals = fdr_correction(pvals)
 
     for potu_name in results_dict:
-        indices = [i for i, x in enumerate(my_list) if x == potu_name]
-        for i in indices:
+        potu_b_h_fdr_p_vals = [b_h_fdr_p_vals[i] for i, x 
+                               in enumerate(potus) if x == potu_name]
+        potu_bonferonni_p_vals = [bonferonni_p_vals[i] for i, x 
+                                  in enumerate(potus) if x == potu_name]
+        potu_fdr_p_vals = [fdr_p_vals[i] for i, x 
+                           in enumerate(potus) if x == potu_name]
+
+        results_dict[potu_name].append(potu_b_h_fdr_p_vals,potu_fdr_p_vals,
+                                       potu_bonferonni_p_vals)
+
+    results_header.append('B&H_FDR_pvals','FDR_pvals','Bonferonni_pvals')
+        
+    return(results_dict, results_header)
+
+
             
 
 
