@@ -146,7 +146,8 @@ def main():
     test = opts.test
     permutations = int(opts.permutations)
     taxonomy_fp = opts.taxonomy_fp
-
+    force = opts.force
+    
     if(opts.host_tree_fp):
         host_fp = opts.host_tree_fp
         host_input_type = "tree"
