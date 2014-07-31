@@ -17,7 +17,7 @@ import os
 import sys
 import glob
 
-from cospeciation import recursive_hommola, make_dists_and_tree, reconcile_hosts_symbionts, write_results
+from cospeciation import recursive_hommola, make_dists_and_tree, reconcile_hosts_symbionts, write_results, write_cospeciation_results
 from biom import load_table
 from qiime.util import make_option
 from qiime.util import load_qiime_config, parse_command_line_parameters,\
@@ -197,11 +197,82 @@ def main():
     summary_file.write("sig_nodes\tnum_nodes\tfile\n")
 
     # Load taxonomic assignments for the pOTUs
+<<<<<<< HEAD
     with open(taxonomy_fp, 'U') as taxonomy_f:
         otu_to_taxonomy = parse_taxonomy(taxonomy_f)
+=======
+    otu_to_taxonomy = parse_taxonomy(open(taxonomy_fp, 'Ur'))
+
+    results_dict = {}
+
+    # test that you have a directory, otherwise exit.
+    if os.path.isdir(subcluster_dir):
+        os.chdir(subcluster_dir)
+        print os.getcwd()
+        # run test on cOTU tables in directory.
+        # use pOTU table to choose which cOTUs to use.
+        for potu in potu_names:
+            # ignore comment lines
+
+            print "Analyzing pOTU # %s" % potu
+
+            cotu_table_fp = os.path.join(subcluster_dir,potu,'otu_table.biom')
+            # Read in cOTU file
+            cotu_table = load_table(cotu_table_fp)
+
+            # Reconcile hosts in host DM and cOTU table
+            cotu_table_filtered, host_dist_filtered = reconcile_hosts_symbionts(
+                cotu_table, host_dist)
+
+            # Read in reconciled cOTU table
+            sample_names_filtered = cotu_table_filtered.ids()
+            cotu_names_filtered = cotu_table_filtered.ids(axis="observation")
+
+            # exit loop if less than three hosts or cOTUs
+            if len(sample_names_filtered) < 3 or len(cotu_names_filtered) < 3:
+                print "Less than 3 hosts or cOTUs in cOTU table!"
+                continue
+
+            # Import, filter, and root cOTU tree
+            cotu_tree_fp = os.path.join(subcluster_dir,potu,"rep_set.tre")
+            cotu_tree_file = open(cotu_tree_fp, 'r')
+            cotu_tree_unrooted = DndParser(cotu_tree_file, PhyloNode)
+            cotu_tree_file.close()
+            cotu_subtree_unrooted = cotu_tree_unrooted.getSubTree(cotu_names_filtered)
+            # root at midpoint
+            # Consider alternate step to go through and find closest DB seq
+            # to root?
+            cotu_subtree = cotu_subtree_unrooted.rootAtMidpoint()
+
+            # filter host tree
+            host_subtree = host_tree.getSubTree(sample_names_filtered)
+            
+            align_folder = glob.glob(os.path.join(subcluster_dir,potu,'*aligned_seqs'))[0]
+            # Load up and filter cOTU sequences
+            aligned_otu_seqs = LoadSeqs(
+                os.path.join(align_folder,'seqs_rep_set_aligned.fasta'), moltype=DNA, label_to_name=lambda x: x.split()[0])
+            cotu_seqs_filtered = aligned_otu_seqs.takeSeqs(list(cotu_names_filtered))
+
+            result = False
+
+            # Run recursive test on this pOTU:
+            # DEBUG:
+            # print 'in run_test_cospeciation'
+
+            # get number of hosts and cOTUs
+            htips = len(host_subtree.getTipNames())
+            stips = len(cotu_subtree.getTipNames())
+
+            # if test == 'unifrac':
+            #    print 'calling unifrac test'
+            #    results_list, results_header = unifrac_recursive_test(host_subtree, cotu_subtree, sample_names_filtered,
+            #                                                   cotu_names_filtered, data, permutations)
+            # results_dict[potu] = results_list
+>>>>>>> newoutput
 
     recurse = test == "hommola_recursive"
 
+<<<<<<< HEAD
     # run test on cOTU tables in directory.
     # use pOTU table to choose which cOTUs to use.
     for potu in potu_names:
@@ -210,11 +281,17 @@ def main():
         cotu_table_fp = os.path.join(subcluster_dir,potu,'otu_table.biom')
         # Read in cOTU file
         cotu_table = load_table(cotu_table_fp)
+=======
+                # run recursive hommola test
+                results_list, results_header = recursive_hommola(cotu_seqs_filtered, host_subtree, host_dist_filtered, cotu_subtree, cotu_table_filtered, permutations, recurse=True)
+                results_dict[potu] = results_list
+>>>>>>> newoutput
 
         # Reconcile hosts in host DM and cOTU table
         cotu_table_filtered, host_dist_filtered = reconcile_hosts_symbionts(
             cotu_table, host_dist)
 
+<<<<<<< HEAD
         # Read in reconciled cOTU table
         sample_names_filtered = cotu_table_filtered.ids()
         cotu_names_filtered = cotu_table_filtered.ids(axis="observation")
@@ -262,6 +339,16 @@ def main():
             sig_nodes, num_nodes, potu, otu_to_taxonomy[potu])
         
         summary_file.write(outline)
+=======
+                # run recursive hommola test
+                results_list, results_header = recursive_hommola(cotu_seqs_filtered, host_subtree, host_dist_filtered, cotu_subtree, cotu_table_filtered, permutations, recurse=False)
+                results_dict[potu] = results_list
+
+    else:
+        print 'Not a directory.'
+>>>>>>> newoutput
+
+    write_cospeciation_results(results_dict, results_header, potu_names, output_dir)
 
     summary_file.close()
 

@@ -28,10 +28,10 @@ python ./test_cospeciation.py \
 
 #summarize results & run multiple test correction
 
-#python ./summarize_results.py \
-#-i Example_output/cOTUs_HostSpecies \
-#-r Example_output/hommola_test_HostSpecies \
-#-o Example_output/hommola_test_HostSpecies_corrected \
-#-t Example_input/taxonomy.txt \
-#--force
+python ./summarize_results.py \
+-i Example_output/new_cOTUs \
+-r Example_output/new_hommola_SampleID \
+-o Example_output/new_hommola_test_corrected \
+-t Example_input/taxonomy.txt \
+--force
 
