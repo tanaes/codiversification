@@ -1,15 +1,16 @@
-#!/n/sw/python-2.7.1/bin/python
-# File created June 2014.
+#!/usr/bin/env python
+# File created on 09 Aug 2012
+
 from __future__ import division
 
 __author__ = "Jon Sanders"
-__copyright__ = "Copyright 2014, Jon Sanders"
-__credits__ = ["Jon Sanders"]
+__copyright__ = "Copyright 2011, The QIIME Project"
+__credits__ = ["Jon Sanders", "Nate Bresnick", "Aaron Behr"]
 __license__ = "GPL"
-__version__ = "1.4.0"
+__version__ = "1.8.0-dev"
 __maintainer__ = "Jon Sanders"
 __email__ = "jonsan@gmail.com"
-__status__ = "Experimental"
+__status__ = "Development"
 
 from qiime.util import make_option
 import os
@@ -73,10 +74,10 @@ The following steps are performed by the command below:
 
 2. Output results to ./output
 """, """
-test_cospeciation_only_nate_draft_2.py -i Example_output/cOTUs_test 
--p Example_input/otu_table_HostSpecies_rarified_filtered.txt 
--a Example_input/host_tree.tre -o Example_output/hommola_test 
--T hommola -t Example_input/taxonomy.txt -m Example_input/sample_map.txt 
+test_cospeciation_only_nate_draft_2.py -i $PWD/Example_output/cOTUs_test 
+-p $PWD/Example_input/otu_table_HostSpecies_rarified_filtered.txt 
+-a $PWD/Example_input/host_tree.tre -o $PWD/Example_output/hommola_test 
+-T $PWD/hommola -t $PWD/Example_input/taxonomy.txt -m $PWD/Example_input/sample_map.txt 
 -c HostSpecies"""))
 script_info['output_description'] = """
 This script results in a folder containing a series of files describing the 
@@ -96,43 +97,37 @@ h_span: the number of hosts in the minimum monophyletic clade of the host tree
 that is spanned by the above hosts. 
 """
 script_info['required_options'] = [
-    make_option('-i', '--cotu_table_fp',
+    make_option('-i', '--cotu_table_dir', type="existing_dirpath",
                 help='the input OTU table file, or directory of files [REQUIRED]'),
-    make_option('-p', '--potu_table_fp',
+    make_option('-p', '--potu_table_fp', type="existing_filepath",
                 help='the input pOTU table file [REQUIRED]'),
-    make_option('-o', '--output_dir',
-                help='path to output directory [REQUIRED]'),
-    make_option('-T', '--test',
+    options_lookup["output_dir"],
+    make_option('-T', '--test', type="choice", choices=["unifrac", "hommola", "hommola_recursive"],
                 help='desired test (unifrac, hommola, hommola_recursive) [REQUIRED]'),
-    make_option('-t', '--taxonomy_fp',
-                help='parent OTU taxonomy filepath [REQUIRED]'),
-    make_option('-m', '--mapping_fp',
-                help='path to the metadata mapping file [REQUIRED]')
-]
+    make_option('-t', '--taxonomy_fp', type="existing_filepath",
+                help='parent OTU taxonomy filepath [REQUIRED]')
+    ]
 script_info['optional_options'] = [
-    make_option('--host_tree_fp',
+    make_option('--host_tree_fp', type="existing_filepath",
               help='a newick-formatted tree with samples as tips [This, a host alignment, or a host distance matrix is required]'),
-    make_option('--host_align_fp',
+    make_option('--host_align_fp', type="existing_filepath",
               help='A FASTA sequence alignment of the hosts [This, a host tree, or a host distance matrix is required]'),
-    make_option('--host_dist_fp',
+    make_option('--host_dist_fp', type="existing_filepath",
               help='A distance matrix specifying some pairwise distance -- not necessarily genetic -- between hosts [This, a host tree, or a host alignment is required]'),
-    make_option('-c', '--mapping_category',
-                help='map category for which to pool samples' +
-                '[default: %default]',
-                default='SampleID'),
     make_option('-s', '--significance_level', type='float',
-                help='Desired level of significance for permutation test ' +
+                help='Desired level of significance for permutation test '
                 '[default: %default]',
                 default=0.05),
     make_option('-n', '--permutations', type='int',
-                help='Desired level of significance for permutation test ' +
+                help='Desired level of significance for permutation test '
                 '[default: %default]',
                 default=1000),
 
     make_option('--force', action='store_true',
-                dest='force', help='Force overwrite of existing output directory' +
-                ' (note: existing files in output_dir will not be removed)' +
-                ' [default: %default]'), options_lookup['jobs_to_start_workflow']]
+                dest='force', help='Force overwrite of existing output directory'
+                ' (note: existing files in output_dir will not be removed)'
+                ' [default: %default]')
+    ]
 
 script_info['version'] = __version__
 
@@ -140,27 +135,33 @@ script_info['version'] = __version__
 def main():
     option_parser, opts, args = parse_command_line_parameters(**script_info)
     potu_table_fp = opts.potu_table_fp
-    subcluster_dir = opts.cotu_table_fp
+    subcluster_dir = opts.cotu_table_dir
     mapping_fp = opts.mapping_fp
     mapping_category = opts.mapping_category
     output_dir = opts.output_dir
-    significance_level = float(opts.significance_level)
+    significance_level = opts.significance_level
     test = opts.test
-    permutations = int(opts.permutations)
+    permutations = opts.permutations
     taxonomy_fp = opts.taxonomy_fp
     force = opts.force
 
-    if(opts.host_tree_fp):
+    options_counter = 0
+
+    if opts.host_tree_fp:
         host_fp = opts.host_tree_fp
         host_input_type = "tree"
-    elif(opts.host_align_fp):
+        options_counter += 1
+    if opts.host_align_fp:
         host_fp = opts.host_align_fp
         host_input_type = "alignment"
-    elif(opts.host_dist_fp):
+        options_counter += 1
+    if opts.host_dist_fp:
         host_fp = opts.host_dist_fp
         host_input_type = "distances"
-    else:
-        sys.exit("Must specify path to a host tree (--host_tree_fp), host alignment (--host_align_fp), or host distance matrix (--host_dist_fp).")
+        options_counter += 1
+
+    if options_counter != 1:
+        raise option_parser.error("Must specify exactly one of the following: path to a host tree (--host_tree_fp), host alignment (--host_align_fp), or host distance matrix (--host_dist_fp).")
 
     # Convert inputs to absolute paths
     output_dir = os.path.abspath(output_dir)
@@ -169,36 +170,14 @@ def main():
     potu_table_fp = os.path.abspath(potu_table_fp)
     subcluster_dir = os.path.abspath(subcluster_dir)
 
-    # Check Host Tree
-    try:
-        with open(host_fp) as f:
-            pass
-
-    except IOError as e:
-        print 'Host Data could not be opened! Are you sure it is located at ' + host_fp + '  ?'
-        exit(1)
-
-    # Check pOTU table
-    try:
-        with open(potu_table_fp) as f:
-            pass
-
-    except IOError as e:
-        print 'parent OTU table could not be opened! Are you sure it is located at ' + potu_table_fp + '  ?'
-        exit(1)
-
     try:
         os.makedirs(output_dir)
-
     except OSError:
-        if force:
-            pass
-        else:
+        if not force:
             # Since the analysis can take quite a while, I put this check
             # in to help users avoid overwriting previous output.
-            print "Output directory already exists. Please choose " +\
-                "a different directory, or force overwrite with -f."
-            exit(1)
+            raise OSError("Output directory already exists. Please choose "
+                "a different directory, or force overwrite with -f.")
 
     # get sample names present in potu table
     # sample_names, taxon_names, data, lineages
@@ -218,105 +197,73 @@ def main():
     summary_file.write("sig_nodes\tnum_nodes\tfile\n")
 
     # Load taxonomic assignments for the pOTUs
-    otu_to_taxonomy = parse_taxonomy(open(taxonomy_fp, 'Ur'))
+    with open(taxonomy_fp, 'U') as taxonomy_f:
+        otu_to_taxonomy = parse_taxonomy(taxonomy_f)
 
-    # test that you have a directory, otherwise exit.
-    if os.path.isdir(subcluster_dir):
-        os.chdir(subcluster_dir)
-        print os.getcwd()
-        # run test on cOTU tables in directory.
-        # use pOTU table to choose which cOTUs to use.
-        for potu in potu_names:
-            # ignore comment lines
+    recurse = test == "hommola_recursive"
 
-            print "Analyzing pOTU # %s" % potu
+    # run test on cOTU tables in directory.
+    # use pOTU table to choose which cOTUs to use.
+    for potu in potu_names:
+        # ignore comment lines
 
-            cotu_table_fp = os.path.join(subcluster_dir,potu,'otu_table.biom')
-            # Read in cOTU file
-            cotu_table = load_table(cotu_table_fp)
+        cotu_table_fp = os.path.join(subcluster_dir,potu,'otu_table.biom')
+        # Read in cOTU file
+        cotu_table = load_table(cotu_table_fp)
 
-            # Reconcile hosts in host DM and cOTU table
-            cotu_table_filtered, host_dist_filtered = reconcile_hosts_symbionts(
-                cotu_table, host_dist)
+        # Reconcile hosts in host DM and cOTU table
+        cotu_table_filtered, host_dist_filtered = reconcile_hosts_symbionts(
+            cotu_table, host_dist)
 
-            # Read in reconciled cOTU table
-            sample_names_filtered = cotu_table_filtered.ids()
-            cotu_names_filtered = cotu_table_filtered.ids(axis="observation")
+        # Read in reconciled cOTU table
+        sample_names_filtered = cotu_table_filtered.ids()
+        cotu_names_filtered = cotu_table_filtered.ids(axis="observation")
 
-            # exit loop if less than three hosts or cOTUs
-            if len(sample_names_filtered) < 3 or len(cotu_names_filtered) < 3:
-                print "Less than 3 hosts or cOTUs in cOTU table!"
-                continue
+        # exit loop if less than three hosts or cOTUs
+        if len(sample_names_filtered) < 3 or len(cotu_names_filtered) < 3:
+            print "Less than 3 hosts or cOTUs in cOTU table!"
+            continue
 
-            # Import, filter, and root cOTU tree
-            cotu_tree_fp = os.path.join(subcluster_dir,potu,"rep_set.tre")
-            cotu_tree_file = open(cotu_tree_fp, 'r')
+        # Import, filter, and root cOTU tree
+        cotu_tree_fp = os.path.join(subcluster_dir,potu,"rep_set.tre")
+
+        with open(cotu_tree_fp, 'r') as cotu_tree_file:
             cotu_tree_unrooted = DndParser(cotu_tree_file, PhyloNode)
-            cotu_tree_file.close()
-            cotu_subtree_unrooted = cotu_tree_unrooted.getSubTree(cotu_names_filtered)
-            # root at midpoint
-            # Consider alternate step to go through and find closest DB seq
-            # to root?
-            cotu_subtree = cotu_subtree_unrooted.rootAtMidpoint()
+        
+        cotu_subtree_unrooted = cotu_tree_unrooted.getSubTree(cotu_names_filtered)
+        # root at midpoint
+        # Consider alternate step to go through and find closest DB seq
+        # to root?
+        cotu_subtree = cotu_subtree_unrooted.rootAtMidpoint()
 
-            # filter host tree
-            host_subtree = host_tree.getSubTree(sample_names_filtered)
-            
-            align_folder = glob.glob(os.path.join(subcluster_dir,potu,'*aligned_seqs'))[0]
-            # Load up and filter cOTU sequences
-            aligned_otu_seqs = LoadSeqs(
-                os.path.join(align_folder,'seqs_rep_set_aligned.fasta'), moltype=DNA, label_to_name=lambda x: x.split()[0])
-            cotu_seqs_filtered = aligned_otu_seqs.takeSeqs(list(cotu_names_filtered))
+        # filter host tree
+        host_subtree = host_tree.getSubTree(sample_names_filtered)
+        
+        align_folder = glob.glob(os.path.join(subcluster_dir,potu,'*aligned_seqs'))[0]
+        # Load up and filter cOTU sequences
+        aligned_otu_seqs = LoadSeqs(
+            os.path.join(align_folder,'seqs_rep_set_aligned.fasta'), moltype=DNA, label_to_name=lambda x: x.split()[0])
+        cotu_seqs_filtered = aligned_otu_seqs.takeSeqs(list(cotu_names_filtered))
 
-            result = False
+        # run hommola test
+        results_dict, acc_dict = recursive_hommola(cotu_seqs_filtered, host_subtree, host_dist_filtered, cotu_subtree, cotu_table_filtered, permutations, recurse=recurse)
 
-            # Run recursive test on this pOTU:
-            # DEBUG:
-            # print 'in run_test_cospeciation'
+        sig_nodes = 0
 
-            # get number of hosts and cOTUs
-            htips = len(host_subtree.getTipNames())
-            stips = len(cotu_subtree.getTipNames())
+        # Count number of significant nodes
+        for pval in results_dict['p_vals']:
+            if pval < significance_level:
+                sig_nodes += 1
 
-            # if test == 'unifrac':
-            #    print 'calling unifrac test'
-            #    results_dict, acc_dict = unifrac_recursive_test(host_subtree, cotu_subtree, sample_names_filtered,
-            #                                                   cotu_names_filtered, data, permutations)
+        num_nodes = write_results(
+            results_dict, acc_dict, output_dir, potu, test, host_tree)
 
-            if test == 'hommola_recursive':
-
-                # run recursive hommola test
-                results_dict, acc_dict = recursive_hommola(cotu_seqs_filtered, host_subtree, host_dist_filtered, cotu_subtree, cotu_table_filtered, permutations, recurse=True)
-
-
-            if test == 'hommola':
-
-                # run recursive hommola test
-                results_dict, acc_dict = recursive_hommola(cotu_seqs_filtered, host_subtree, host_dist_filtered, cotu_subtree, cotu_table_filtered, permutations, recurse=False)
-
-
-            sig_nodes = 0
-
-            # Count number of significant nodes
-            for pval in results_dict['p_vals']:
-                if pval < significance_level:
-                    sig_nodes += 1
-
-            num_nodes = write_results(
-                results_dict, acc_dict, output_dir, potu, test, host_tree)
-            result = True
-
-            if result:
-                outline = "{0}\t{1}\t{2}\t{3}".format(
-                    sig_nodes, num_nodes, potu, otu_to_taxonomy[potu]) + "\n"
-            else:
-                outline = "ERROR\t\t" + file + "\n"
-            print outline
-            summary_file.write(outline)
-
-    else:
-        print 'Not a directory.'
+        outline = "{0}\t{1}\t{2}\t{3}\n".format(
+            sig_nodes, num_nodes, potu, otu_to_taxonomy[potu])
+        
+        summary_file.write(outline)
 
     summary_file.close()
+
 if __name__ == "__main__":
     main()

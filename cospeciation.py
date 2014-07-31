@@ -1,16 +1,13 @@
-#!/n/sw/python-2.7.1/bin/python
-# File created on 3 October 2011.
 from __future__ import division
 
 __author__ = "Jon Sanders"
-__copyright__ = "Copyright 2011, Jon Sanders"
-__credits__ = ["Jon Sanders"]
+__copyright__ = "Copyright 2011, The QIIME Project"
+__credits__ = ["Jon Sanders", "Nate Bresnick", "Aaron Behr"]
 __license__ = "GPL"
-__version__ = "1.4.0"
+__version__ = "1.8.0-dev"
 __maintainer__ = "Jon Sanders"
 __email__ = "jonsan@gmail.com"
-__status__ = "Experimental"
-
+__status__ = "Development"
 
 import os
 import sys
@@ -18,6 +15,7 @@ import re
 from StringIO import StringIO
 import numpy
 from random import shuffle
+from operator import add
 
 from qiime.util import load_qiime_config, parse_command_line_parameters, get_options_lookup, make_option
 from qiime.parse import parse_qiime_parameters, parse_taxonomy, parse_distmat, make_envs_dict, fields_to_dict
@@ -110,6 +108,12 @@ dist_tuple_dict = {('SHAJ', 'SHAK'): 0.10750048520885,
  
 """ 
 
+def cache_tipnames(tree):
+    for n in tree.postorder(include_self=True):
+        if n.isTip():
+            n._tip_names = [n.Name]
+        else:
+            n._tip_names = reduce(add, [c._tip_names for c in n.Children])
 
 def recursive_hommola(aligned_otu_seqs, host_subtree, host_dm, otu_tree, otu_table, 
                 permutations=1000, recurse=False):
@@ -126,11 +130,10 @@ def recursive_hommola(aligned_otu_seqs, host_subtree, host_dm, otu_tree, otu_tab
     It returns a dictionary of the results, and an empty accessory dict.
     """
 
-    # print "Performing recursive Hommola et al cospeciation test..."
-    
     sample_names = otu_table.ids()
     taxon_names = otu_table.ids(axis="observation")
-    otu_data = numpy.asarray([v for v in otu_table.iter_data(axis='observation')])
+    presence_absence = otu_table.pa(inplace=False)
+    interaction = numpy.asarray(list(presence_absence.iter_data(axis='observation')))
     
     # calculate pairise distances between OTUs
 
@@ -141,40 +144,31 @@ def recursive_hommola(aligned_otu_seqs, host_subtree, host_dm, otu_tree, otu_tab
 
     otu_dm = cogent_dist_to_qiime_dist(otu_dists)
 
-    # convert pw distances (and tree distances for hosts) to numpy arrays with same
-    # column/row headings as host/OTU positions in OTU table numpy array.
-
-    #hdd = dist2Dict2D(host_dist,sample_names)
-    #hdn = numpy.array(hdd.toLists())
-    #sdd = dist2Dict2D(otu_dists,taxon_names)
-    #sdn = numpy.array(sdd.toLists())
-
-    # print "got here"
-
-    # print host_dm
-    # print sample_names
-    # print otu_dm
-    # print taxon_names
-
     host_dm = sort_dm_by_sample(host_dm, sample_names)
     otu_dm = sort_dm_by_sample(otu_dm, taxon_names)
 
     # convert OTU table to binary array, throwing out all OTUs below a given
     # thresh.
 
-    interaction = otu_data.clip(0, 1)
-
     # traverse OTU tree and test each node
 
     # initialize our output lists
-    s_nodes, h_nodes, p_vals, s_tips, h_tips, r_vals, r_distro_vals = [
-    ], [], [], [], [], [], []
+    s_nodes = []
+    h_nodes = []
+    p_vals = []
+    s_tips = []
+    h_tips = []
+    r_vals = []
+    r_distro_vals = []
     # print "just before loop"
     # iterate over the tree of child OTUs
-    for node in otu_tree.traverse(self_before=True, self_after=False):
+
+    cache_tipnames(otu_tree)
+
+    for node in otu_tree.preorder():
 
         # get just OTUs in this node
-        otu_subset = node.getTipNames()
+        otu_subset = node._tip_names
 
         # subset dms and interaction matrix to just this node
         otu_dm_sub, host_dm_sub, interaction_sub = \
@@ -183,8 +177,6 @@ def recursive_hommola(aligned_otu_seqs, host_subtree, host_dm, otu_tree, otu_tab
         # Make sure we have at least 3 hosts and symbionts represented
         if len(host_dm_sub[0]) > 2 and len(otu_dm_sub[0]) > 2 \
                 and host_dm_sub[1].sum() != 0 and otu_dm_sub[1].sum() != 0:
-
-            # print node.asciiArt()
 
             # append symbiont nodes and host subtrees as tree objects
             s_nodes.append(node)
@@ -201,31 +193,9 @@ def recursive_hommola(aligned_otu_seqs, host_subtree, host_dm, otu_tree, otu_tab
             r_vals.append(r)
             r_distro_vals.append(r_distro)
 
-            # print node.asciiArt()
-            # print p
-
         # If only testing top-level node, break out of tree traverse.
         if not recurse:
             break
-        # else:
-        #   print "Less than three hosts"
-        # s_nodes.append(node)
-        # h_nodes.append(host_subtree.getSubTree(h_names))
-        # s_tips.append(len(s_vec))
-        # h_tips.append(len(h_vec))
-        # p_vals.append('NA')
-
-    # DEBUG:
-    """
-    for i in range(len(p_vals)):
-        if p_vals[i] < 0.1:
-            print s_nodes[i].asciiArt()
-            print h_nodes[i].asciiArt()
-            print p_vals[i]
-            pause = raw_input("")
-    """
-
-    # print "finished recursive Hommola"
 
     results_dict = {'p_vals': p_vals, 's_tips': s_tips,
                     'h_tips': h_tips, 's_nodes': s_nodes, 'h_nodes': h_nodes}
@@ -233,175 +203,6 @@ def recursive_hommola(aligned_otu_seqs, host_subtree, host_dm, otu_tree, otu_tab
     # suppressed: return the distribution of r values
     # 'r_distro_vals':r_distro_vals
     return (results_dict, acc_dict)
-
-
-def unifrac_recursive_test(ref_tree, tree, sample_names,
-                           taxon_names, data, permutations=1000):  # , metric=weighted):
-    """Performs UniFrac recursively over a tree.
-
-    Specifically, for each node in the tree, performs UniFrac clustering.
-    Then compares the UniFrac tree to a reference tree of the same taxa using
-    the tip-to-tip distances and the subset distances. Assumption is that if
-    the two trees match, the node represents a group in which evolution has
-    mirrored the evolution of the reference tree.
-
-    tree: contains the tree on which UniFrac will be performed recursively.
-    envs: environments for UniFrac clustering (these envs should match the
-          taxon labels in the ref_tree)
-    ref_tree: reference tree that the clustering is supposed to match.
-    metric: metric for UniFrac clustering.
-
-    Typically, will want to estimate significance by comparing the actual
-    values from ref_tree to values obtained with one or more shuffled versions
-    of ref_tree (can make these with permute_tip_labels).
-
-
-    Note from Jon: 
-
-    I've modified this code a bit to test each node against a set of label-
-    permuted host trees, and return some additional information about each node.
-
-    It doesn't appear to give sensible results, not sure why. Almost none of the
-    resulting permutations yield any other than zero or the number of permuta-
-    tions. In other words, every permutation yields either a better or worse 
-    match than the true tree. 
-    """
-    UNIFRAC_CLUST_ENVS = "cluster_envs"
-
-    lengths, dists, sets, s_nodes, h_nodes, dist_below, sets_below, h_tips, s_tips = [
-    ], [], [], [], [], [], [], [], []
-
-    # Permute host tips, store permuted trees in a list of tree strings
-    # print "Permuting host tree..."
-
-    permuted_trees = []
-    host_names = ref_tree.getTipNames()
-    random_names = ref_tree.getTipNames()
-    # for i in range(permutations):
-    #   shuffle(random_names)
-    #   permute_dict = dict(zip(host_names,random_names))
-    #   permuted_subtree = ref_tree.copy()
-    #   permuted_subtree.reassignNames(permute_dict)
-    #   permuted_trees.append(str(permuted_subtree))
-    #
-    # alt:
-    for i in range(permutations):
-        shuffle(random_names)
-        permute_dict = dict(zip(host_names, random_names))
-        permuted_subtree = ref_tree.copy()
-        permuted_subtree.reassignNames(permute_dict)
-        permuted_trees.append(permuted_subtree)
-
-    interaction = data.clip(0, 1)
-    # Parse OTU table data into Unifrac-compatible envs tuple
-
-    envs = make_envs_dict(data.T, sample_names, taxon_names)
-
-    # Pass host tree, new OTU tree, and envs to recursive unifrac
-    # print "Performing recursive Unifrac analysis..."
-
-    for node in tree.traverse(self_before=True, self_after=False):
-
-        #pause = raw_input("pause!")
-        # print node
-        try:
-            result = fast_unifrac(
-                node, envs, weighted=False, modes=set([UNIFRAC_CLUST_ENVS]))
-            curr_tree = result[UNIFRAC_CLUST_ENVS]
-        except ValueError:
-            # hit a single node?
-            continue
-        except AttributeError:
-            # hit a zero branch length
-            continue
-        if curr_tree is None:
-            # hit single node?
-            continue
-        try:
-            l = len(curr_tree.tips())
-            d = curr_tree.compareByTipDistances(ref_tree)
-            s = curr_tree.compareBySubsets(ref_tree, True)
-
-            d_b = 0.0
-            s_b = 0.0
-
-            # for rand_tree_string in permuted_trees:
-            #   rand_tree = DndParser(rand_tree_string)
-            #   if d >= curr_tree.compareByTipDistances(rand_tree):
-            #       d_b += 1
-            #   if s >= curr_tree.compareBySubsets(rand_tree):
-            #       s_b += 1
-
-            for rand_tree in permuted_trees:
-                if d >= curr_tree.compareByTipDistances(rand_tree):
-                    d_b += 1
-                if s >= curr_tree.compareBySubsets(rand_tree):
-                    s_b += 1
-
-            d_b = d_b / float(len(permuted_trees))
-            s_b = s_b / float(len(permuted_trees))
-
-            # The following section generates s_tips and h_tips variables
-            # get just OTUs in this node
-            otu_subset = node.getTipNames()
-            s_tips_tmp = 0
-            h_tips_tmp = 0
-            s_vec = []
-            # find positional index (from OTU table) for each cOTU represented
-            # in this node:
-            for i in range(len(taxon_names)):
-                if taxon_names[i] in otu_subset:
-                    s_tips_tmp += 1
-                    s_vec.append(i)
-
-            # slice interaction matrix down to only cOTUs in this node
-            i_s_slice = interaction[numpy.ix_(s_vec)]
-
-            # find positional index (this time from OTU table size) for each sample in this node:
-            # sum all values in column for each host, if greater than zero, add
-            # that host position to h_vec
-            for j in range(i_s_slice.shape[1]):
-                if i_s_slice[:, j].sum():
-                    h_tips_tmp += 1
-
-            # want to calculate all values before appending so we can bail out
-            # if any of the calculations fails: this ensures that the lists
-            # remain synchronized.
-
-            """
-            print curr_tree.asciiArt()
-            print ref_tree.asciiArt()
-            print l
-            print d
-            print d_b
-            print s
-            print s_b
-            print node
-            
-            pause = raw_input("pause!")
-            """
-
-            if l > 2:
-                lengths.append(l)
-                dists.append(d)
-                sets.append(s)
-                s_nodes.append(node)
-                h_nodes.append(curr_tree)
-                dist_below.append(d_b)
-                sets_below.append(s_b)
-                h_tips.append(h_tips_tmp)
-                s_tips.append(s_tips_tmp)
-        except ValueError:
-            # no common taxa
-            continue
-    results_dict = {'p_vals': sets_below, 's_tips': s_tips,
-                    'h_tips': h_tips, 's_nodes': s_nodes, 'h_nodes': h_nodes}
-
-    acc_dict = {'lengths': lengths, 'dists': dists,
-                'sets': sets, 'dist_below': dist_below}
-
-    return (results_dict, acc_dict)
-
 
 def make_dists_and_tree(sample_names, host_fp, host_input_type):
     """
@@ -412,30 +213,20 @@ def make_dists_and_tree(sample_names, host_fp, host_input_type):
     distance matrix and host subtree are passed back to the main routine for 
     testing.
     """
-    hostf = open(host_fp, 'r')
-    host_str = hostf.read()
-    hostf.close()
+    with open(host_fp, 'r') as host_f:
+        host_str = hostf.read()
 
     # Attempt to parse the host tree/alignment/distance matrix
     if host_input_type == "tree":
         host_tree, host_dist = processTree(host_str)
-        print "Input is tree"
 
     elif host_input_type == "alignment":
         host_tree, host_dist = processAlignment(host_str)
-        print "Input is alignment"
 
     elif host_input_type == "distances":
         host_tree, host_dist = processMatrix(host_str)
-        print "Input is distance matrix"
 
-    else:
-        print "Host information file could not be parsed"
-
-    # Remove any sample names not in host tree
-    sample_names = filter(
-        lambda x: x if x in host_tree.getTipNames() else None, sample_names)
-    print sample_names
+    sample_names = [x for x in sample_names if x in host_tree.getTipNames()]
     # Get host subtree and filter distance matrix so they only include samples
     # present in the pOTU table
     host_tree = host_tree.getSubTree(sample_names)
@@ -498,11 +289,9 @@ def filter_samples_from_distance_matrix(dm, samples_to_discard, negate=False):
 def sort_dm_by_sample(dm, sample_names):
     """Sorts a qiime distance matrix tuple in the order of sample names given"""
 
-    dm_names_dict = dict([(x[1], x[0]) for x in enumerate(sample_names)])
-    name_slice = []
+    dm_names_dict = {x:i for i, x in enumerate(sample_names)}
 
-    for name in dm[0]:
-        name_slice.append(dm_names_dict[name])
+    name_slice = [dm_names_dict[name] for name in dm[0]]
 
     sorted_dm = dm[1][numpy.ix_(name_slice, name_slice)]
 
@@ -538,13 +327,13 @@ def filter_dms(otu_dm, host_dm, interaction, otu_subset):
     # sum all values in column for each host, if greater than zero, add that
     # host position to h_vec
     for j in range(i_s_slice.shape[1]):
-        if i_s_slice[:, j].sum():
+        if i_s_slice[:, j].any():
             h_vec.append(j)
             h_names.append(host_dm[0][j])
 
     # check to see that the host vector isn't empty
-    if len(h_vec) < 1:
-        return(([], []), ([], []), ([]))
+    if not h_vec:
+        return(([], []), ([], []), [])
 
     i_slice = interaction[numpy.ix_(s_vec, h_vec)]
 
@@ -647,20 +436,16 @@ def calc_h_span(host_tree, results_dict, i):
 
 def reconcile_hosts_symbionts(cotu_table, host_dist):
 
-    #DEBUG
-    #print cotu_table
-    #print host_dist
-
-    shared_hosts = set(cotu_table.ids(axis = 'sample')).intersection(host_dist[0])
+    shared_hosts = set(cotu_table.ids(axis='sample')).intersection(host_dist[0])
 
     # filter cOTU table by samples present in host_tree/dm
 
-    cotu_table_filtered = cotu_table.filter(shared_hosts, axis = 'sample', inplace = False)
+    cotu_table_filtered = cotu_table.filter(shared_hosts, axis='sample', inplace=False)
     
 
-    # filter cOTU table again to get rid of absent cOTUs
+    # filter cOTU table again to get rid of absent cOTUs. BIOM should do this.
 
-    cotu_table_filtered.filter(lambda val, id_, metadata: 1 <= val.sum(), axis='observation', inplace = True)
+    cotu_table_filtered.filter(lambda val, id_, metadata: 1 <= val.sum(), axis='observation', inplace=True)
     
     # Filter the host_dists to match the newly trimmed subtree
     # Note: this is requiring the modified filter_dist method which
