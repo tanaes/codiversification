@@ -519,8 +519,13 @@ def write_cospeciation_results(results_dict, results_header, potu_names, output_
         summary_file.write(outline)
         summary_file.close()
 
-    for name, var in [('p_vals', sig_nodes), 
-    pOTU    fdr_p   taxonomy    h_nodes p_vals  s_nodes s_tips  h_tips  r_vals  h_span
+    for shortname, name, var in [('uncorrected', 'p_vals', sig_nodes), ('FDR', 
+        'FDR_p_vals', fdr_sig_nodes), ('bonferroni', 'Bonferroni_p_vals', 
+        bonferroni_sig_nodes), ('bh_FDR', 'b&h_fdr_p_vals', bh_fdr_sig_nodes)]:
+        sig_nodes_file = open(os.path.join(output_dir, "%s_sig_nodes.txt" % shortname))
+        sig_nodes_file.write("pOTU\t%s\ttaxonomy\th_nodes\tp_vals\ts_nodes\ts_tips\th_tips\tr_vals\th_span" % name)
+
+        for node in var: 
 
 def reconcile_hosts_symbionts(cotu_table, host_dist):
 
