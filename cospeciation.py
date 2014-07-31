@@ -693,11 +693,22 @@ def write_cospeciation_results(results_dict, results_header, potu_names, output_
 
     results_dict = add_corrections_to_results_dict(results_dict)
 
-    # Count number of significant nodes
+    #Write per-OTU results:
+    for pOTU in potu_names:
+        results_file = open(os.path.join(output_dir,('%s_%s_results.txt' % (potu, test))), 'w')
+        for header in results_header:
+            results_file.write(header + "\t")
+        for i in range(len(results_dict[potu][0]))
+            results_file.write((x[i] for x in results_dict[potu]).join("\t"))
+        results_file.close()
+
+    # Count number of significant (uncorrected) nodes
     for pval in results_dict[potu][results_header.index('p_vals')]:
         if pval < significance_level:
             sig_nodes += 1
-
+B&b_h_fdr_p_vals
+FDR_pvals
+Bonferonni_p_vals
     num_nodes = write_results(
         results_dict, acc_dict, output_dir, potu, test, host_tree)
     result = True
