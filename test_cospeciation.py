@@ -298,29 +298,10 @@ def main():
                 results_list, results_header = recursive_hommola(cotu_seqs_filtered, host_subtree, host_dist_filtered, cotu_subtree, cotu_table_filtered, permutations, recurse=False)
                 results_dict[potu] = results_list
 
-            sig_nodes = 0
-
-            # Count number of significant nodes
-            for pval in results_dict[potu][results_header.index('p_vals')]:
-                if pval < significance_level:
-                    sig_nodes += 1
-
-            num_nodes = write_results(
-                results_dict, acc_dict, output_dir, potu, test, host_tree)
-            result = True
-
-            if result:
-                outline = "{0}\t{1}\t{2}\t{3}".format(
-                    sig_nodes, num_nodes, potu, otu_to_taxonomy[potu]) + "\n"
-            else:
-                outline = "ERROR\t\t" + file + "\n"
-            print outline
-            summary_file.write(outline)
-
     else:
         print 'Not a directory.'
 
-    write_cospeciation_results(results_dict, output_dir)
+    write_cospeciation_results(results_dict, results_header, potu_names, output_dir)
 
     summary_file.close()
 if __name__ == "__main__":

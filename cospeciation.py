@@ -645,7 +645,70 @@ def calc_h_span(host_tree, results_dict, i):
     return h_span
 
 
-def write_cospeciation_results(results_dict, results_dir)
+def add_corrections_to_results_dict(results_dict, results_header):
+    # Takes a results dictionary and adds multiple test corrections.
+    pvals = []
+    potus = []
+
+    for potu_name in results_dict:
+        potus.append([potu_name]*len(results_dict[potu_name][0]))
+        pvals.append(results_dict[potu_name][results_header.index('p_vals')])
+    
+    b_h_fdr_p_vals = benjamini_hochberg_step_down(pvals)
+    bonferonni_p_vals = bonferroni_correction(pvals)
+    fdr_p_vals = fdr_correction(pvals)
+
+    for potu_name in results_dict:
+        indices = [i for i, x in enumerate(my_list) if x == potu_name]
+        for i in indices:
+            
+
+
+
+
+def write_cospeciation_results(results_dict, results_header, potu_names, output_dir):
+    # Takes a results dictionary, which is a dictionary keyed by parent OTU 
+    # names, with values composed of a list of lists. Each internal list 
+    # corresponds to an output of the test, with values ordered according to
+    # the order in which each node of the pOTU was tested. In the case of non-
+    # recursive tests, these lists will only have a single value. 
+    #
+    # Also takes a results_header, which is a list of header names associated 
+    # with these values, and an output directory path.
+    # 
+    # Does:
+    # - Performs significance correction (FDR, B&H, Bonferonni)
+    # - Calculates number of significant nodes under each correction
+    #
+    # Writes:
+    # - a results file for each pOTU, indicating each node and its values
+    # - a results summary file, indicating for each pOTU the number of nodes
+    #   tested and the number significant under each correction factor.
+    # - a file of significant nodes under each multiple test correction
+    #
+
+
+
+    sig_nodes = 0
+
+    results_dict = add_corrections_to_results_dict(results_dict)
+
+    # Count number of significant nodes
+    for pval in results_dict[potu][results_header.index('p_vals')]:
+        if pval < significance_level:
+            sig_nodes += 1
+
+    num_nodes = write_results(
+        results_dict, acc_dict, output_dir, potu, test, host_tree)
+    result = True
+
+    if result:
+        outline = "{0}\t{1}\t{2}\t{3}".format(
+            sig_nodes, num_nodes, potu, otu_to_taxonomy[potu]) + "\n"
+    else:
+        outline = "ERROR\t\t" + file + "\n"
+    print outline
+    summary_file.write(outline)
 
 
 def reconcile_hosts_symbionts(cotu_table, host_dist):
