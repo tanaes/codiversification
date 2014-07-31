@@ -227,12 +227,14 @@ def recursive_hommola(aligned_otu_seqs, host_subtree, host_dm, otu_tree, otu_tab
 
     # print "finished recursive Hommola"
 
-    results_dict = {'p_vals': p_vals, 's_tips': s_tips,
-                    'h_tips': h_tips, 's_nodes': s_nodes, 'h_nodes': h_nodes}
-    acc_dict = {'r_vals': r_vals}
+    results_list = [p_vals, s_tips, h_tips, s_nodes, h_nodes, r_vals]
+
+
+    results_header = ['p_vals', 's_tips', 'h_tips', 's_nodes', 'h_nodes', 'r_vals']
+
     # suppressed: return the distribution of r values
     # 'r_distro_vals':r_distro_vals
-    return (results_dict, acc_dict)
+    return (results_list, results_header)
 
 
 def unifrac_recursive_test(ref_tree, tree, sample_names,
@@ -394,13 +396,11 @@ def unifrac_recursive_test(ref_tree, tree, sample_names,
         except ValueError:
             # no common taxa
             continue
-    results_dict = {'p_vals': sets_below, 's_tips': s_tips,
-                    'h_tips': h_tips, 's_nodes': s_nodes, 'h_nodes': h_nodes}
+    results_list = [sets_below, s_tips, h_tips, s_nodes, h_nodes, lengths, dists, sets, dist_below]
 
-    acc_dict = {'lengths': lengths, 'dists': dists,
-                'sets': sets, 'dist_below': dist_below}
+    results_header = ['p_vals', 's_tips', 'h_tips', 's_nodes', 'h_nodes', 'lengths', 'dists', 'sets', 'dist_below']
 
-    return (results_dict, acc_dict)
+    return (results_list, results_header)
 
 
 def make_dists_and_tree(sample_names, host_fp, host_input_type):
@@ -643,6 +643,9 @@ def calc_h_span(host_tree, results_dict, i):
     except:
         print 'h_span error!'
     return h_span
+
+
+def write_cospeciation_results(results_dict, results_dir)
 
 
 def reconcile_hosts_symbionts(cotu_table, host_dist):

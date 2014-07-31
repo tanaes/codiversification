@@ -111,8 +111,8 @@ class HommolaTests(TestCase):
     def test_recursive_hommola(self):
         exp_h_nodes = LoadTree(treestring="((SHNT:0.0865915890705,(SHNP:0.0718459904766,SHNO:0.0718459904767):0.0147455985938):0.0267606238488,SHNW:0.113352212919);")
         exp_s_nodes = LoadTree(treestring="((1:0.00015,2:0.02813)0.894:0.00235,(0:0.02491,(3:0.00499,(4:0.00503,5:0.0025)0.927:0.00014)0.655:0.00787):0.00557);")
-        exp_s_tips = [6]
-        exp_h_tips = [4]
+        exp_s_tips = 6
+        exp_h_tips = 4
         exp_r_vals = 0.49739280928
 
         aligned_otu_seqs = LoadSeqs(data=test_seqs)
@@ -121,13 +121,14 @@ class HommolaTests(TestCase):
         otu_tree = LoadTree(treestring="(3:0.00499,(0:0.02491,(1:0.00015,2:0.02813)0.894:0.00792)0.655:0.00787,(4:0.00503,5:0.0025)0.927:0.00014);")
         otu_table = Table.from_tsv(StringIO(otu_table_lines), None, None, lambda x : x)
 
-        results_dict, acc_dict = recursive_hommola(aligned_otu_seqs,host_subtree,host_dm,otu_tree,
+        results_list, results_header = recursive_hommola(aligned_otu_seqs,host_subtree,host_dm,otu_tree,
                         otu_table,permutations=1000,recurse=False)
-        self.assertEqual(results_dict['s_tips'],exp_s_tips)
-        self.assertEqual(results_dict['h_tips'],exp_h_tips)
-        self.assertEqual(str(results_dict['s_nodes'][0].rootAtMidpoint()),str(exp_s_nodes.rootAtMidpoint()))
-        self.assertEqual(str(results_dict['h_nodes'][0].rootAtMidpoint()),str(exp_h_nodes.rootAtMidpoint()))
-        self.assertAlmostEqual(acc_dict['r_vals'][0],exp_r_vals)
+        
+        self.assertEqual(results_list[results_header.index('s_tips')][0],exp_s_tips)
+        self.assertEqual(results_list[results_header.index('h_tips')][0],exp_h_tips)
+        self.assertEqual(str(results_list[results_header.index('s_nodes')][0].rootAtMidpoint()),str(exp_s_nodes.rootAtMidpoint()))
+        self.assertEqual(str(results_list[results_header.index('h_nodes')][0].rootAtMidpoint()),str(exp_h_nodes.rootAtMidpoint()))
+        self.assertAlmostEqual(results_list[results_header.index('r_vals')][0],exp_r_vals)
 
         
     def test_distmat_to_tree(self):

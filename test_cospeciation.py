@@ -16,7 +16,7 @@ import os
 import sys
 import glob
 
-from cospeciation import recursive_hommola, make_dists_and_tree, reconcile_hosts_symbionts, write_results
+from cospeciation import recursive_hommola, make_dists_and_tree, reconcile_hosts_symbionts, write_results, write_cospeciation_results
 from biom import load_table
 from qiime.util import make_option
 from qiime.util import load_qiime_config, parse_command_line_parameters,\
@@ -220,6 +220,8 @@ def main():
     # Load taxonomic assignments for the pOTUs
     otu_to_taxonomy = parse_taxonomy(open(taxonomy_fp, 'Ur'))
 
+    results_dict = {}
+
     # test that you have a directory, otherwise exit.
     if os.path.isdir(subcluster_dir):
         os.chdir(subcluster_dir)
@@ -280,25 +282,26 @@ def main():
 
             # if test == 'unifrac':
             #    print 'calling unifrac test'
-            #    results_dict, acc_dict = unifrac_recursive_test(host_subtree, cotu_subtree, sample_names_filtered,
+            #    results_list, results_header = unifrac_recursive_test(host_subtree, cotu_subtree, sample_names_filtered,
             #                                                   cotu_names_filtered, data, permutations)
+            # results_dict[potu] = results_list
 
             if test == 'hommola_recursive':
 
                 # run recursive hommola test
-                results_dict, acc_dict = recursive_hommola(cotu_seqs_filtered, host_subtree, host_dist_filtered, cotu_subtree, cotu_table_filtered, permutations, recurse=True)
-
+                results_list, results_header = recursive_hommola(cotu_seqs_filtered, host_subtree, host_dist_filtered, cotu_subtree, cotu_table_filtered, permutations, recurse=True)
+                results_dict[potu] = results_list
 
             if test == 'hommola':
 
                 # run recursive hommola test
-                results_dict, acc_dict = recursive_hommola(cotu_seqs_filtered, host_subtree, host_dist_filtered, cotu_subtree, cotu_table_filtered, permutations, recurse=False)
-
+                results_list, results_header = recursive_hommola(cotu_seqs_filtered, host_subtree, host_dist_filtered, cotu_subtree, cotu_table_filtered, permutations, recurse=False)
+                results_dict[potu] = results_list
 
             sig_nodes = 0
 
             # Count number of significant nodes
-            for pval in results_dict['p_vals']:
+            for pval in results_dict[potu][results_header.index('p_vals')]:
                 if pval < significance_level:
                     sig_nodes += 1
 
@@ -316,6 +319,8 @@ def main():
 
     else:
         print 'Not a directory.'
+
+    write_cospeciation_results(results_dict, output_dir)
 
     summary_file.close()
 if __name__ == "__main__":
