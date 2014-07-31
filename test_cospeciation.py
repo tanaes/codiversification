@@ -14,7 +14,9 @@ __status__ = "Experimental"
 from qiime.util import make_option
 import os
 import sys
-from cospeciation import recursive_hommola, make_dists_and_tree, reconcile_hosts_symbionts
+import glob
+
+from cospeciation import recursive_hommola, make_dists_and_tree, reconcile_hosts_symbionts, write_results
 from biom import load_table
 from qiime.util import make_option
 from qiime.util import load_qiime_config, parse_command_line_parameters,\
@@ -147,7 +149,7 @@ def main():
     permutations = int(opts.permutations)
     taxonomy_fp = opts.taxonomy_fp
     force = opts.force
-    
+
     if(opts.host_tree_fp):
         host_fp = opts.host_tree_fp
         host_input_type = "tree"

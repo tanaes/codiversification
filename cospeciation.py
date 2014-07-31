@@ -13,7 +13,6 @@ __status__ = "Experimental"
 
 
 import os
-import glob
 import sys
 import re
 from StringIO import StringIO
