@@ -599,36 +599,6 @@ def distmat_to_tree(distmat):
 
     return nj.nj(cogent_host_dist)
 
-
-def filter_otu_table_by_min(sample_names, taxon_names, data, lineages, min=1):
-    # loop through and remove every otu present at less than min
-    # this should be replaced by native QIIME filter code.
-    s_vec = []
-    s_names = []
-    taxonomies = []
-
-    # create list of OTUs to keep
-    for otu in range(data.shape[0]):
-        if data[otu, :].sum() >= min:
-            s_vec.append(otu)
-            s_names.append(taxon_names[otu])
-            if lineages:
-                taxonomies.append(lineages[otu])
-
-    h_vec = []
-    h_names = []
-
-    for sample in range(data.shape[1]):
-        if data[numpy.ix_(s_vec), sample].sum() >= 1:
-            h_vec.append(sample)
-            h_names.append(sample_names[sample])
-
-    # slice data
-    data = data[numpy.ix_(s_vec, h_vec)]
-
-    return h_names, s_names, data, taxonomies
-
-
 def write_results(results_dict, acc_dict, output_dir, potu, test, host_tree):
     # print results_dict
     # print acc_dict
