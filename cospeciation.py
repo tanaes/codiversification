@@ -446,7 +446,7 @@ def add_corrections_to_results_dict(results_dict, results_header):
         pvals.append(results_dict[potu_name][results_header.index('p_vals')])
     
     b_h_fdr_p_vals = benjamini_hochberg_step_down(pvals)
-    bonferonni_p_vals = bonferroni_correction(pvals)
+    bonferroni_p_vals = bonferroni_correction(pvals)
     fdr_p_vals = fdr_correction(pvals)
 
     for potu_name in results_dict:
@@ -468,7 +468,7 @@ def write_cospeciation_results(results_dict, results_header, potu_names, output_
     # with these values, and an output directory path.
     # 
     # Does:
-    # - Performs significance correction (FDR, B&H, Bonferonni)
+    # - Performs significance correction (FDR, B&H, Bonferroni)
     # - Calculates number of significant nodes under each correction
     #
     # Writes:
@@ -480,11 +480,14 @@ def write_cospeciation_results(results_dict, results_header, potu_names, output_
 
 
 
-    sig_nodes = 0
+    sig_nodes = []
+    fdr_sig_nodes = []
+    bh_fdr_sig_nodes = []
+    bonferroni_sig_nodes = []
 
     results_dict = add_corrections_to_results_dict(results_dict)
 
-    #Write per-OTU results:
+    #Write per-OTU results files:
     for pOTU in potu_names:
         results_file = open(os.path.join(output_dir,('%s_%s_results.txt' % (potu, test))), 'w')
         for header in results_header:
@@ -493,25 +496,31 @@ def write_cospeciation_results(results_dict, results_header, potu_names, output_
             results_file.write((x[i] for x in results_dict[potu]).join("\t"))
         results_file.close()
 
-    # Count number of significant (uncorrected) nodes
-    for pval in results_dict[potu][results_header.index('p_vals')]:
-        if pval < significance_level:
-            sig_nodes += 1
-B&b_h_fdr_p_vals
-FDR_pvals
-Bonferonni_p_vals
-    num_nodes = write_results(
-        results_dict, acc_dict, output_dir, potu, test, host_tree)
-    result = True
+    #Write results summary file
+    summary_file = open(os.path.join(output_dir, "cospeciation_results_summary.txt")
+    summary_file.write("pOTU\tUncorrected sig nodes\tFDR sig nodes\tB&H FDR sig nodes\tBonferroni sig nodes\tNodes tested\tTaxonomy")
+    for pOTU in potu_names:
+        num_nodes = len(results_dict[potu][0])
 
-    if result:
-        outline = "{0}\t{1}\t{2}\t{3}".format(
-            sig_nodes, num_nodes, potu, otu_to_taxonomy[potu]) + "\n"
-    else:
-        outline = "ERROR\t\t" + file + "\n"
-    print outline
-    summary_file.write(outline)
+        for i in range(num_nodes):
+            if results_dict[potu][results_header.index('p_vals')][i] < significance_level:
+                sig_nodes.append((potu,i))
+            if results_dict[potu][results_header.index('FDR_p_vals')][i] < significance_level:
+                fdr_sig_nodes.append((potu,i))
+            if results_dict[potu][results_header.index('Bonferroni_p_vals')][i] < significance_level:
+                bonferroni_sig_nodes.append((potu,i))
+            if results_dict[potu][results_header.index('b&h_fdr_p_vals')][i] < significance_level:
+                bh_fdr_sig_nodes.append((potu,i))
 
+        outline = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\n".format(pOTU, len(sig_nodes), 
+            len(fdr_sig_nodes), len(bh_fdr_sig_nodes), len(bonferroni_sig_nodes), num_nodes, 
+            otu_to_taxonomy[potu])
+        
+        summary_file.write(outline)
+        summary_file.close()
+
+    for name, var in [('p_vals', sig_nodes), 
+    pOTU    fdr_p   taxonomy    h_nodes p_vals  s_nodes s_tips  h_tips  r_vals  h_span
 
 def reconcile_hosts_symbionts(cotu_table, host_dist):
 
