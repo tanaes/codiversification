@@ -6,13 +6,13 @@ echo 'Test summarized by host species'
 
 #subcluster OTUs into cOTUs
 
-#python ./otu_subcluster.py \
-#-i Example_input/otu_map.txt \
-#-o Example_output/new_cOTUs \
-#-f Example_input/seqs.fna \
-#-p Example_input/99_fasttree_muscle_params.txt \
-#-t Example_input/otu_table_rarified_filtered.biom \
-#--force
+python ./otu_subcluster.py \
+-i Example_input/otu_map.txt \
+-o Example_output/new_cOTUs \
+-f Example_input/seqs.fna \
+-p Example_input/99_fasttree_muscle_params.txt \
+-t Example_input/otu_table_rarified_filtered.biom \
+--force
 
 #run cospeciation test on each pOTU
 
