@@ -21,6 +21,7 @@ from qiime.util import load_qiime_config, parse_command_line_parameters, get_opt
 from qiime.parse import parse_qiime_parameters, parse_taxonomy, parse_distmat, make_envs_dict, fields_to_dict
 from qiime.filter import filter_samples_from_otu_table, filter_samples_from_distance_matrix
 from qiime.workflow.upstream import run_pick_de_novo_otus
+from qiime.stats import benjamini_hochberg_step_down, bonferroni_correction, fdr_correction
 
 from qiime.workflow.util import call_commands_serially, no_status_updates
 
@@ -443,25 +444,28 @@ def add_corrections_to_results_dict(results_dict, results_header):
     potus = []
 
     for potu_name in results_dict:
-        potus.append([potu_name]*len(results_dict[potu_name][0]))
-        pvals.append(results_dict[potu_name][results_header.index('p_vals')])
-    
+        potus = reduce(add,[potus,[potu_name]*len(results_dict[potu_name][0])])
+        pvals = reduce(add,[pvals,results_dict[potu_name][results_header.index('p_vals')]])
+
     b_h_fdr_p_vals = benjamini_hochberg_step_down(pvals)
-    bonferonni_p_vals = bonferroni_correction(pvals)
+    bonferroni_p_vals = bonferroni_correction(pvals)
     fdr_p_vals = fdr_correction(pvals)
 
     for potu_name in results_dict:
         potu_b_h_fdr_p_vals = [b_h_fdr_p_vals[i] for i, x 
                                in enumerate(potus) if x == potu_name]
-        potu_bonferonni_p_vals = [bonferonni_p_vals[i] for i, x 
-                                  in enumerate(potus) if x == potu_name]
+        results_dict[potu_name].append(potu_b_h_fdr_p_vals)
+
         potu_fdr_p_vals = [fdr_p_vals[i] for i, x 
                            in enumerate(potus) if x == potu_name]
+        results_dict[potu_name].append(potu_fdr_p_vals)
+        
+        potu_bonferroni_p_vals = [bonferroni_p_vals[i] for i, x 
+                                  in enumerate(potus) if x == potu_name]
+        results_dict[potu_name].append(potu_bonferroni_p_vals)
 
-        results_dict[potu_name].append(potu_b_h_fdr_p_vals,potu_fdr_p_vals,
-                                       potu_bonferonni_p_vals)
 
-    results_header.append('B&H_FDR_pvals','FDR_pvals','Bonferonni_pvals')
+    results_header = reduce(add,[results_header,['B&H_FDR_pvals','FDR_pvals','Bonferroni_pvals']])
         
     return(results_dict, results_header)
 
@@ -501,12 +505,12 @@ def write_cospeciation_results(results_dict, results_header, potu_names, output_
         results_file = open(os.path.join(output_dir,('%s_%s_results.txt' % (potu, test))), 'w')
         for header in results_header:
             results_file.write(header + "\t")
-        for i in range(len(results_dict[potu][0]))
+        for i in range(len(results_dict[potu][0])):
             results_file.write("\t".join(x[i] for x in results_dict[potu]))
         results_file.close()
 
     #Write results summary file
-    summary_file = open(os.path.join(output_dir, "cospeciation_results_summary.txt")
+    summary_file = open(os.path.join(output_dir, "cospeciation_results_summary.txt"))
     summary_file.write("pOTU\tUncorrected sig nodes\tFDR sig nodes\tB&H FDR sig nodes\tBonferroni sig nodes\tNodes tested\tTaxonomy")
     for pOTU in potu_names:
         num_nodes = len(results_dict[potu][0])
@@ -538,7 +542,7 @@ def write_cospeciation_results(results_dict, results_header, potu_names, output_
 
         for sig_node in var:
             sig_nodes_file.write("{0}\t{1}\t{2}\t".format(sig_node[0],otu_to_taxonomy[sig_node[0]],calc_h_span(sig_node[0])))
-            sig_nodes_file.write("\t".join(x[sig_node[1]] for x in results_dict[sig_node[0]])
+            sig_nodes_file.write("\t".join(x[sig_node[1]] for x in results_dict[sig_node[0]]))
             sig_nodes_file.write("\n")
         sig_nodes_file.close()
 
