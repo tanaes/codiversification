@@ -489,8 +489,6 @@ def write_cospeciation_results(results_dict, results_header, potu_names, output_
     # - a file of significant nodes under each multiple test correction
     #
 
-
-
     sig_nodes = []
     fdr_sig_nodes = []
     bh_fdr_sig_nodes = []
@@ -504,7 +502,7 @@ def write_cospeciation_results(results_dict, results_header, potu_names, output_
         for header in results_header:
             results_file.write(header + "\t")
         for i in range(len(results_dict[potu][0]))
-            results_file.write((x[i] for x in results_dict[potu]).join("\t"))
+            results_file.write("\t".join(x[i] for x in results_dict[potu]))
         results_file.close()
 
     #Write results summary file
@@ -530,8 +528,20 @@ def write_cospeciation_results(results_dict, results_header, potu_names, output_
         summary_file.write(outline)
         summary_file.close()
 
-    for name, var in [('p_vals', sig_nodes), 
-    pOTU    fdr_p   taxonomy    h_nodes p_vals  s_nodes s_tips  h_tips  r_vals  h_span
+    for shortname, name, var in [('uncorrected', 'p_vals', sig_nodes), ('FDR', 
+        'FDR_p_vals', fdr_sig_nodes), ('bonferroni', 'Bonferroni_p_vals', 
+        bonferroni_sig_nodes), ('bh_FDR', 'b&h_fdr_p_vals', bh_fdr_sig_nodes)]:
+        
+        sig_nodes_file = open(os.path.join(output_dir, "%s_sig_nodes.txt" % shortname))
+        sig_nodes_file.write("pOTU\ttaxonomy\th_span\t")
+        sig_nodes_file.write("\t".join(results_header) + "\n")
+
+        for sig_node in var:
+            sig_nodes_file.write("{0}\t{1}\t{2}\t".format(sig_node[0],otu_to_taxonomy[sig_node[0]],calc_h_span(sig_node[0])))
+            sig_nodes_file.write("\t".join(x[sig_node[1]] for x in results_dict[sig_node[0]])
+            sig_nodes_file.write("\n")
+        sig_nodes_file.close()
+
 
 def reconcile_hosts_symbionts(cotu_table, host_dist):
 
