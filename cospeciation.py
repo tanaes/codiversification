@@ -430,7 +430,7 @@ def add_h_span_to_results_dict(results_dict, results_header, host_tree):
         for i in range(len(results_dict[potu_name][results_header.index('h_nodes')])):
             h_span = str(len(host_tree.lowestCommonAncestor(results_dict[potu_name][results_header.index('h_nodes')][i].getTipNames()).getTipNames()))
             h_span_list.append(h_span)
-        results_dict[potu_name].append(h_span)
+        results_dict[potu_name].append(h_span_list)
 
     results_header.append('h_span')
         
