@@ -466,9 +466,6 @@ def add_corrections_to_results_dict(results_dict, results_header):
     return(results_dict, results_header)
 
 
-            
-
-
 
 
 def write_cospeciation_results(results_dict, results_header, potu_names, output_dir):
