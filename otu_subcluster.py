@@ -84,8 +84,8 @@ def main():
 
     output_dir = opts.output_dir
     otu_map_fp = opts.otu_map_fp
-    otu_table_fp = opts.otu_table_fp
-    fasta_fp = opts.fasta_fp
+    otu_table_fp = opts.biom_table_fp
+    fasta_fp = opts.input_fasta_fp
     parameter_fp = opts.parameter_fp
     force = opts.force
 

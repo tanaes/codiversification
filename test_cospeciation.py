@@ -17,7 +17,7 @@ import os
 import sys
 import glob
 
-from cospeciation import recursive_hommola, make_dists_and_tree, reconcile_hosts_symbionts, write_results
+from cospeciation import recursive_hommola, make_dists_and_tree, reconcile_hosts_symbionts, write_cospeciation_results
 from biom import load_table
 from qiime.util import make_option
 from qiime.util import load_qiime_config, parse_command_line_parameters,\
@@ -136,8 +136,6 @@ def main():
     option_parser, opts, args = parse_command_line_parameters(**script_info)
     potu_table_fp = opts.potu_table_fp
     subcluster_dir = opts.cotu_table_dir
-    mapping_fp = opts.mapping_fp
-    mapping_category = opts.mapping_category
     output_dir = opts.output_dir
     significance_level = opts.significance_level
     test = opts.test
@@ -166,7 +164,6 @@ def main():
     # Convert inputs to absolute paths
     output_dir = os.path.abspath(output_dir)
     host_fp = os.path.abspath(host_fp)
-    mapping_fp = os.path.abspath(mapping_fp)
     potu_table_fp = os.path.abspath(potu_table_fp)
     subcluster_dir = os.path.abspath(subcluster_dir)
 
@@ -193,14 +190,13 @@ def main():
     # At this point, the host tree and host dist matrix have the intersect of
     # the samples in the pOTU table and the input host tree/dm.
 
-    summary_file = open(os.path.join(output_dir,'cospeciation_results_summary.txt'), 'w')
-    summary_file.write("sig_nodes\tnum_nodes\tfile\n")
-
     # Load taxonomic assignments for the pOTUs
     with open(taxonomy_fp, 'U') as taxonomy_f:
         otu_to_taxonomy = parse_taxonomy(taxonomy_f)
 
     recurse = test == "hommola_recursive"
+
+    results_dict = {}
 
     # run test on cOTU tables in directory.
     # use pOTU table to choose which cOTUs to use.
@@ -246,24 +242,10 @@ def main():
         cotu_seqs_filtered = aligned_otu_seqs.takeSeqs(list(cotu_names_filtered))
 
         # run hommola test
-        results_dict, acc_dict = recursive_hommola(cotu_seqs_filtered, host_subtree, host_dist_filtered, cotu_subtree, cotu_table_filtered, permutations, recurse=recurse)
+        results_list, results_header = recursive_hommola(cotu_seqs_filtered, host_subtree, host_dist_filtered, cotu_subtree, cotu_table_filtered, permutations, recurse=recurse)
+        results_dict[potu] = results_list
 
-        sig_nodes = 0
-
-        # Count number of significant nodes
-        for pval in results_dict['p_vals']:
-            if pval < significance_level:
-                sig_nodes += 1
-
-        num_nodes = write_results(
-            results_dict, acc_dict, output_dir, potu, test, host_tree)
-
-        outline = "{0}\t{1}\t{2}\t{3}\n".format(
-            sig_nodes, num_nodes, potu, otu_to_taxonomy[potu])
-        
-        summary_file.write(outline)
-
-    summary_file.close()
+    write_cospeciation_results(results_dict, results_header, significance_level, output_dir, host_tree, otu_to_taxonomy, test)
 
 if __name__ == "__main__":
     main()
