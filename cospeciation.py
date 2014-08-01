@@ -22,7 +22,6 @@ from qiime.parse import parse_qiime_parameters, parse_taxonomy, parse_distmat, m
 from qiime.filter import filter_samples_from_otu_table, filter_samples_from_distance_matrix
 from qiime.workflow.upstream import run_pick_de_novo_otus
 from qiime.stats import benjamini_hochberg_step_down, bonferroni_correction, fdr_correction
-
 from qiime.workflow.util import call_commands_serially, no_status_updates
 
 from biom import load_table
@@ -217,7 +216,7 @@ def make_dists_and_tree(sample_names, host_fp, host_input_type):
     testing.
     """
     with open(host_fp, 'r') as host_f:
-        host_str = hostf.read()
+        host_str = host_f.read()
 
     # Attempt to parse the host tree/alignment/distance matrix
     if host_input_type == "tree":
@@ -390,53 +389,6 @@ def distmat_to_tree(distmat):
 
     return nj.nj(cogent_host_dist)
 
-def write_results(results_dict, acc_dict, output_dir, potu, test, host_tree):
-    # print results_dict
-    # print acc_dict
-
-    results_file = open(os.path.join(output_dir,('%s_%s_results.txt' % (potu, test))), 'w')
-
-    keys = results_dict.keys()
-    acc_keys = acc_dict.keys()
-    for key in keys:
-        results_file.write(key + "\t")
-
-    for key in acc_keys:
-        results_file.write(key + "\t")
-
-    results_file.write("h_span" + "\t")
-    # Write results for each node
-    num_nodes = len(results_dict[keys[0]])
-
-    for i in range(num_nodes):
-        results_file.write("\n")
-
-        for key in keys:
-            results_file.write(str(results_dict[key][i]) + "\t")
-
-        for key in acc_keys:
-            results_file.write(str(acc_dict[key][i]) + "\t")
-
-        h_span = calc_h_span(host_tree, results_dict, i)
-        results_file.write(h_span)
-
-    results_file.close()
-    return num_nodes
-
-
-def calc_h_span(host_tree, results_dict, i):
-    # calculate 'host span' for each node --
-    # host span is the minimum number of hosts in the subtree of the original
-    # input host tree that is spanned by the hosts included in the cOTU table.
-
-    try:
-        h_span = str(len(host_tree.lowestCommonAncestor(
-            results_dict['h_nodes'][i].getTipNames()).getTipNames()))
-    except:
-        print 'h_span error!'
-    return h_span
-
-
 def add_corrections_to_results_dict(results_dict, results_header):
     # Takes a results dictionary and adds multiple test corrections.
 
@@ -470,9 +422,22 @@ def add_corrections_to_results_dict(results_dict, results_header):
     return(results_dict, results_header)
 
 
+def add_h_span_to_results_dict(results_dict, results_header, host_tree):
+    # Takes a results dictionary and adds multiple test corrections.
+
+    for potu_name in results_dict:
+        h_span_list =[]
+        for i in range(len(results_dict[potu_name][results_header.index('h_nodes')])):
+            h_span = str(len(host_tree.lowestCommonAncestor(results_dict[potu_name][results_header.index('h_nodes')][i].getTipNames()).getTipNames()))
+            h_span_list.append(h_span)
+        results_dict[potu_name].append(h_span)
+
+    results_header.append('h_span')
+        
+    return(results_dict, results_header)
 
 
-def write_cospeciation_results(results_dict, results_header, potu_names, output_dir):
+def write_cospeciation_results(results_dict, results_header, significance_level, output_dir, host_tree, otu_to_taxonomy, test):
     # Takes a results dictionary, which is a dictionary keyed by parent OTU 
     # names, with values composed of a list of lists. Each internal list 
     # corresponds to an output of the test, with values ordered according to
@@ -498,51 +463,55 @@ def write_cospeciation_results(results_dict, results_header, potu_names, output_
     bh_fdr_sig_nodes = []
     bonferroni_sig_nodes = []
 
-    results_dict = add_corrections_to_results_dict(results_dict)
-
+    results_dict, results_header = add_corrections_to_results_dict(results_dict, results_header)
+    results_dict, results_header = add_h_span_to_results_dict(results_dict, results_header, host_tree)
+    potu_names = list(results_dict.keys())
     #Write per-OTU results files:
-    for pOTU in potu_names:
+    for potu in potu_names:
         results_file = open(os.path.join(output_dir,('%s_%s_results.txt' % (potu, test))), 'w')
         for header in results_header:
             results_file.write(header + "\t")
+        results_file.write("\n")
         for i in range(len(results_dict[potu][0])):
-            results_file.write("\t".join(x[i] for x in results_dict[potu]))
+            results_file.write("\t".join(str(x[i]) for x in results_dict[potu]))
+            results_file.write("\n")
         results_file.close()
 
     #Write results summary file
-    summary_file = open(os.path.join(output_dir, "cospeciation_results_summary.txt"))
-    summary_file.write("pOTU\tUncorrected sig nodes\tFDR sig nodes\tB&H FDR sig nodes\tBonferroni sig nodes\tNodes tested\tTaxonomy")
-    for pOTU in potu_names:
+    summary_file = open(os.path.join(output_dir, "cospeciation_results_summary.txt"),'w')
+    summary_file.write("pOTU\tUncorrected sig nodes\tFDR sig nodes\tB&H FDR sig nodes\tBonferroni sig nodes\tNodes tested\tTaxonomy\n")
+    for potu in potu_names:
         num_nodes = len(results_dict[potu][0])
-
         for i in range(num_nodes):
             if results_dict[potu][results_header.index('p_vals')][i] < significance_level:
                 sig_nodes.append((potu,i))
-            if results_dict[potu][results_header.index('FDR_p_vals')][i] < significance_level:
+            if results_dict[potu][results_header.index('FDR_pvals')][i] < significance_level:
                 fdr_sig_nodes.append((potu,i))
-            if results_dict[potu][results_header.index('Bonferroni_p_vals')][i] < significance_level:
+            if results_dict[potu][results_header.index('Bonferroni_pvals')][i] < significance_level:
                 bonferroni_sig_nodes.append((potu,i))
-            if results_dict[potu][results_header.index('b&h_fdr_p_vals')][i] < significance_level:
+            if results_dict[potu][results_header.index('B&H_FDR_pvals')][i] < significance_level:
                 bh_fdr_sig_nodes.append((potu,i))
 
-        outline = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\n".format(pOTU, len(sig_nodes), 
-            len(fdr_sig_nodes), len(bh_fdr_sig_nodes), len(bonferroni_sig_nodes), num_nodes, 
-            otu_to_taxonomy[potu])
+        outline = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\n".format(potu, len([item for item in sig_nodes if item[0] == potu]), 
+            len([item for item in fdr_sig_nodes if item[0] == potu]), 
+            len([item for item in bh_fdr_sig_nodes if item[0] == potu]), 
+            len([item for item in bonferroni_sig_nodes if item[0] == potu]), 
+            num_nodes, otu_to_taxonomy[potu])
         
         summary_file.write(outline)
-        summary_file.close()
+    summary_file.close()
 
     for shortname, name, var in [('uncorrected', 'p_vals', sig_nodes), ('FDR', 
-        'FDR_p_vals', fdr_sig_nodes), ('bonferroni', 'Bonferroni_p_vals', 
-        bonferroni_sig_nodes), ('bh_FDR', 'b&h_fdr_p_vals', bh_fdr_sig_nodes)]:
+        'FDR_pvals', fdr_sig_nodes), ('bonferroni', 'Bonferroni_pvals', 
+        bonferroni_sig_nodes), ('bh_FDR', 'B&H_FDR_pvals', bh_fdr_sig_nodes)]:
         
-        sig_nodes_file = open(os.path.join(output_dir, "%s_sig_nodes.txt" % shortname))
-        sig_nodes_file.write("pOTU\ttaxonomy\th_span\t")
+        sig_nodes_file = open(os.path.join(output_dir, "%s_sig_nodes.txt" % shortname),'w')
+        sig_nodes_file.write("pOTU\ttaxonomy\t")
         sig_nodes_file.write("\t".join(results_header) + "\n")
 
         for sig_node in var:
-            sig_nodes_file.write("{0}\t{1}\t{2}\t".format(sig_node[0],otu_to_taxonomy[sig_node[0]],calc_h_span(sig_node[0])))
-            sig_nodes_file.write("\t".join(x[sig_node[1]] for x in results_dict[sig_node[0]]))
+            sig_nodes_file.write("{0}\t{1}\t".format(sig_node[0],otu_to_taxonomy[sig_node[0]]))
+            sig_nodes_file.write("\t".join(str(x[sig_node[1]]) for x in results_dict[sig_node[0]]))
             sig_nodes_file.write("\n")
         sig_nodes_file.close()
 
