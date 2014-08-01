@@ -16,12 +16,12 @@
 
 #run cospeciation test on each pOTU
 
-python ./test_cospeciation.py \
+python -m cProfile ./test_cospeciation.py \
 -i Example_output/new_cOTUs \
 -p Example_input/otu_table_rarified_filtered.biom \
 --host_tree_fp Example_input/host_tree_SampleID.tre \
 -o Example_output/new_new_hommola_SampleID \
--T hommola \
+-T hommola_recursive \
 -t Example_input/taxonomy.txt \
 --force
 
