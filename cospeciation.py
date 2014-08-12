@@ -457,29 +457,22 @@ def write_cospeciation_results(results_dict, results_header, significance_level,
     #   tested and the number significant under each correction factor.
     # - a file of significant nodes under each multiple test correction
     #
+    results_dict, results_header = add_corrections_to_results_dict(results_dict, results_header)
+    results_dict, results_header = add_h_span_to_results_dict(results_dict, results_header, host_tree)
+   
+    sig_nodes, fdr_sig_nodes, bh_fdr_sig_nodes, bonferroni_sig_nodes = get_sig_nodes(results_dict, results_header, significance_level)
 
+    write_per_otu_results_file(results_dict, results_header, output_dir, test)
+    write_summary_file(results_dict, results_header, output_dir, otu_to_taxonomy, sig_nodes, fdr_sig_nodes, bh_fdr_sig_nodes, bonferroni_sig_nodes)
+    write_sig_nodes_files(results_dict, results_header, output_dir, otu_to_taxonomy, sig_nodes, fdr_sig_nodes, bh_fdr_sig_nodes, bonferroni_sig_nodes)
+
+def get_sig_nodes(results_dict, results_header, significance_level):
     sig_nodes = []
     fdr_sig_nodes = []
     bh_fdr_sig_nodes = []
     bonferroni_sig_nodes = []
-
-    results_dict, results_header = add_corrections_to_results_dict(results_dict, results_header)
-    results_dict, results_header = add_h_span_to_results_dict(results_dict, results_header, host_tree)
+    
     potu_names = list(results_dict.keys())
-    #Write per-OTU results files:
-    for potu in potu_names:
-        results_file = open(os.path.join(output_dir,('%s_%s_results.txt' % (potu, test))), 'w')
-        for header in results_header:
-            results_file.write(header + "\t")
-        results_file.write("\n")
-        for i in range(len(results_dict[potu][0])):
-            results_file.write("\t".join(str(x[i]) for x in results_dict[potu]))
-            results_file.write("\n")
-        results_file.close()
-
-    #Write results summary file
-    summary_file = open(os.path.join(output_dir, "cospeciation_results_summary.txt"),'w')
-    summary_file.write("pOTU\tUncorrected sig nodes\tFDR sig nodes\tB&H FDR sig nodes\tBonferroni sig nodes\tNodes tested\tTaxonomy\n")
     for potu in potu_names:
         num_nodes = len(results_dict[potu][0])
         for i in range(num_nodes):
@@ -491,16 +484,39 @@ def write_cospeciation_results(results_dict, results_header, significance_level,
                 bonferroni_sig_nodes.append((potu,i))
             if results_dict[potu][results_header.index('B&H_FDR_pvals')][i] < significance_level:
                 bh_fdr_sig_nodes.append((potu,i))
+    return sig_nodes, fdr_sig_nodes, bh_fdr_sig_nodes, bonferroni_sig_nodes
 
-        outline = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\n".format(potu, len([item for item in sig_nodes if item[0] == potu]), 
+def write_per_otu_results_file(results_dict, results_header, output_dir, test):
+    #Write per-OTU results files:
+    potu_names = list(results_dict.keys())
+    for potu in potu_names:
+        results_file = open(os.path.join(output_dir,('%s_%s_results.txt' % (potu, test))), 'w')
+        for header in results_header:
+            results_file.write(header + "\t")
+        results_file.write("\n")
+        for i in range(len(results_dict[potu][0])):
+            results_file.write("\t".join(str(x[i]) for x in results_dict[potu]))
+            results_file.write("\n")
+        results_file.close()
+
+def write_summary_file(results_dict, results_header, output_dir, otu_to_taxonomy, sig_nodes, fdr_sig_nodes, bh_fdr_sig_nodes, bonferroni_sig_nodes):
+    #Write results summary file
+    potu_names = list(results_dict.keys())
+    summary_file = open(os.path.join(output_dir, "cospeciation_results_summary.txt"),'w')
+    summary_file.write("pOTU\tUncorrected sig nodes\tFDR sig nodes\tB&H FDR sig nodes\tBonferroni sig nodes\tNodes tested\tTaxonomy\n")
+    for potu in potu_names:
+        num_nodes = len(results_dict[potu][0])
+        outline = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\n".format(potu, 
+            len([item for item in sig_nodes if item[0] == potu]), 
             len([item for item in fdr_sig_nodes if item[0] == potu]), 
             len([item for item in bh_fdr_sig_nodes if item[0] == potu]), 
             len([item for item in bonferroni_sig_nodes if item[0] == potu]), 
             num_nodes, otu_to_taxonomy[potu])
-        
         summary_file.write(outline)
     summary_file.close()
 
+def write_sig_nodes_files(results_dict, results_header, output_dir, otu_to_taxonomy, sig_nodes, fdr_sig_nodes, bh_fdr_sig_nodes, bonferroni_sig_nodes):
+    #Write lists of significant nodes for each standard of significance
     for shortname, name, var in [('uncorrected', 'p_vals', sig_nodes), ('FDR', 
         'FDR_pvals', fdr_sig_nodes), ('bonferroni', 'Bonferroni_pvals', 
         bonferroni_sig_nodes), ('bh_FDR', 'B&H_FDR_pvals', bh_fdr_sig_nodes)]:
@@ -514,7 +530,6 @@ def write_cospeciation_results(results_dict, results_header, significance_level,
             sig_nodes_file.write("\t".join(str(x[sig_node[1]]) for x in results_dict[sig_node[0]]))
             sig_nodes_file.write("\n")
         sig_nodes_file.close()
-
 
 def reconcile_hosts_symbionts(cotu_table, host_dist):
 

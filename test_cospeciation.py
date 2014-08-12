@@ -202,7 +202,7 @@ def main():
     # use pOTU table to choose which cOTUs to use.
     for potu in potu_names:
         # ignore comment lines
-
+        print "Analyzing " + potu 
         cotu_table_fp = os.path.join(subcluster_dir,potu,'otu_table.biom')
         # Read in cOTU file
         cotu_table = load_table(cotu_table_fp)
