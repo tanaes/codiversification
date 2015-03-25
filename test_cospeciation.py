@@ -17,7 +17,7 @@ import os
 import sys
 import glob
 
-from cospeciation import recursive_hommola, make_dists_and_tree, reconcile_hosts_symbionts, write_cospeciation_results
+from cospeciation import recursive_hommola, make_dists_and_tree, reconcile_hosts_symbionts, write_cospeciation_results, collapse_and_write_otu_table
 from biom import load_table
 from qiime.util import make_option
 from qiime.util import load_qiime_config, parse_command_line_parameters,\
@@ -131,7 +131,7 @@ script_info['optional_options'] = [
     make_option('-m', '--mapping_fp', type='existing_filepath',
                 help='the sample metdata mapping file'),
     make_option('--collapse_fields',
-                help="comma-separated list of fields to collapse on")
+                help="comma-separated list of fields to collapse on"),
     make_option('--collapse_mode', type='choice', choices=collapse_modes,
         help="the mechanism for collapsing counts within groups; "
         "valid options are: %s" % ', '.join(collapse_modes), default='sum'),
@@ -200,18 +200,7 @@ def main():
                 "a different directory, or force overwrite with -f.")
 
     if collapse:
-        collapsed_metadata, collapsed_table = \
-            collapse_samples(load_table(potu_table_fp),
-                             open(mapping_fp, 'U'),
-                             collapse_fields,
-                             collapse_mode)
-
-        output_biom_fp = '_'.join([os.path.splitext(potu_table_fp)[0]] + 
-                                    collapse_fields) + os.path.splitext(potu_table_fp)[1]
-
-        write_biom_table(collapsed_table, output_biom_fp)
-
-        potu_table_fp = output_biom_fp
+        potu_table_fp = collapse_and_write_otu_table(potu_table_fp, mapping_fp, collapse_fields, collapse_mode)
 
     # get sample names present in potu table
     # sample_names, taxon_names, data, lineages
@@ -241,6 +230,8 @@ def main():
         # ignore comment lines
         print "Analyzing " + potu 
         cotu_table_fp = os.path.join(subcluster_dir,potu,'otu_table.biom')
+        if collapse:
+            cotu_table_fp = collapse_and_write_otu_table(cotu_table_fp, mapping_fp, collapse_fields, collapse_mode)
         # Read in cOTU file
         cotu_table = load_table(cotu_table_fp)
 

@@ -18,12 +18,13 @@ import numpy
 from random import shuffle
 from operator import add
 
-from qiime.util import load_qiime_config, parse_command_line_parameters, get_options_lookup, make_option
+from qiime.util import load_qiime_config, parse_command_line_parameters, get_options_lookup, make_option, write_biom_table
 from qiime.parse import parse_qiime_parameters, parse_taxonomy, parse_distmat, make_envs_dict, fields_to_dict
 from qiime.filter import filter_samples_from_otu_table, filter_samples_from_distance_matrix
 from qiime.workflow.upstream import run_pick_de_novo_otus
 from qiime.stats import benjamini_hochberg_step_down, bonferroni_correction, fdr_correction
 from qiime.workflow.util import call_commands_serially, no_status_updates
+from qiime.group import collapse_samples
 
 from biom import load_table
 
@@ -188,7 +189,7 @@ def recursive_hommola(aligned_otu_seqs, host_subtree, host_dm, otu_tree, otu_tab
             h_tips.append(len(host_dm_sub[0]))
             # calculate permutation p value for hommola test for this node
             r, p, r_distro = hommola_cospeciation(host_dm_sub[1], otu_dm_sub[1],
-                                                       interaction_sub, permutations)
+                                                          interaction_sub, permutations)
             # append to results list
             p_vals.append(p)
             r_vals.append(r)
@@ -487,6 +488,22 @@ def get_sig_nodes(results_dict, results_header, significance_level):
                 bh_fdr_sig_nodes.append((potu,i))
     return sig_nodes, fdr_sig_nodes, bh_fdr_sig_nodes, bonferroni_sig_nodes
 
+def collapse_and_write_otu_table(otu_table_fp, mapping_fp, collapse_fields, collapse_mode):
+        collapsed_metadata, collapsed_table = \
+            collapse_samples(load_table(otu_table_fp),
+                             open(mapping_fp, 'U'),
+                             collapse_fields,
+                             collapse_mode)
+
+        output_biom_fp = '_'.join([os.path.splitext(otu_table_fp)[0]] + 
+                                    collapse_fields) + os.path.splitext(otu_table_fp)[1]
+
+        #print collapsed_table
+
+        write_biom_table(collapsed_table, output_biom_fp, write_hdf5=False)
+
+        return output_biom_fp
+
 def write_per_otu_results_file(results_dict, results_header, output_dir, test):
     #Write per-OTU results files:
     potu_names = list(results_dict.keys())
@@ -516,7 +533,7 @@ def write_summary_file(results_dict, results_header, output_dir, otu_to_taxonomy
         summary_file.write(outline)
     summary_file.close()
 
-def write_sig_nodes_files(results_dict, results_header, output_dir, otu_to_taxonomy, sig_nodes, bh_fdr_sig_nodesnodes, bh_fdr_sig_nodes, bonferroni_sig_nodes):
+def write_sig_nodes_files(results_dict, results_header, output_dir, otu_to_taxonomy, sig_nodes, fdr_sig_nodes, bh_fdr_sig_nodes, bonferroni_sig_nodes):
     #Write lists of significant nodes for each standard of significance
     for shortname, name, var in [('uncorrected', 'p_vals', sig_nodes), ('FDR', 
         'FDR_pvals', fdr_sig_nodes), ('bonferroni', 'Bonferroni_pvals', 
