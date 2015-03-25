@@ -186,7 +186,6 @@ class HommolaTests(TestCase):
         self.assertEqual(str(results_list[results_header.index('s_nodes')][0].rootAtMidpoint()),str(exp_s_nodes.rootAtMidpoint()))
         self.assertEqual(str(results_list[results_header.index('h_nodes')][0].rootAtMidpoint()),str(exp_h_nodes.rootAtMidpoint()))
         self.assertAlmostEqual(results_list[results_header.index('r_vals')][0],exp_r_vals)
-
         
     def test_distmat_to_tree(self):
         pass

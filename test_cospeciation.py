@@ -21,13 +21,19 @@ from cospeciation import recursive_hommola, make_dists_and_tree, reconcile_hosts
 from biom import load_table
 from qiime.util import make_option
 from qiime.util import load_qiime_config, parse_command_line_parameters,\
-    get_options_lookup
+    get_options_lookup, write_biom_table
 from qiime.parse import parse_qiime_parameters, parse_taxonomy
 import os.path
 import os
 from cogent.parse.tree import DndParser
 from cogent.core.tree import PhyloNode
 from cogent import LoadTree, LoadSeqs, DNA
+
+from qiime.group import (collapse_samples, get_collapse_fns,
+                          mapping_lines_from_collapsed_df)
+
+collapse_fns = get_collapse_fns()
+collapse_modes = collapse_fns.keys()
 
 # the following 3 imports added 2013-07-09 by Aaron Behr
 # for method cogent_dist_to_qiime_dist
@@ -122,7 +128,13 @@ script_info['optional_options'] = [
                 help='Desired level of significance for permutation test '
                 '[default: %default]',
                 default=1000),
-
+    make_option('-m', '--mapping_fp', type='existing_filepath',
+                help='the sample metdata mapping file'),
+    make_option('--collapse_fields',
+                help="comma-separated list of fields to collapse on")
+    make_option('--collapse_mode', type='choice', choices=collapse_modes,
+        help="the mechanism for collapsing counts within groups; "
+        "valid options are: %s" % ', '.join(collapse_modes), default='sum'),
     make_option('--force', action='store_true',
                 dest='force', help='Force overwrite of existing output directory'
                 ' (note: existing files in output_dir will not be removed)'
@@ -161,11 +173,22 @@ def main():
     if options_counter != 1:
         raise option_parser.error("Must specify exactly one of the following: path to a host tree (--host_tree_fp), host alignment (--host_align_fp), or host distance matrix (--host_dist_fp).")
 
+    if opts.mapping_fp and opts.collapse_fields:
+        collapse = True
+        mapping_fp = os.path.abspath(opts.mapping_fp)
+        collapse_fields = opts.collapse_fields.split(',')
+        collapse_mode = opts.collapse_mode
+    elif opts.mapping_fp or opts.collapse_fields:
+        raise option_parser.error("If collapsing samples in pOTU table by metadata, must provide metadata map AND fields to collapse")
+    else:
+        collapse = False
+
     # Convert inputs to absolute paths
     output_dir = os.path.abspath(output_dir)
     host_fp = os.path.abspath(host_fp)
     potu_table_fp = os.path.abspath(potu_table_fp)
     subcluster_dir = os.path.abspath(subcluster_dir)
+
 
     try:
         os.makedirs(output_dir)
@@ -175,6 +198,20 @@ def main():
             # in to help users avoid overwriting previous output.
             raise OSError("Output directory already exists. Please choose "
                 "a different directory, or force overwrite with -f.")
+
+    if collapse:
+        collapsed_metadata, collapsed_table = \
+            collapse_samples(load_table(potu_table_fp),
+                             open(mapping_fp, 'U'),
+                             collapse_fields,
+                             collapse_mode)
+
+        output_biom_fp = '_'.join([os.path.splitext(potu_table_fp)[0]] + 
+                                    collapse_fields) + os.path.splitext(potu_table_fp)[1]
+
+        write_biom_table(collapsed_table, output_biom_fp)
+
+        potu_table_fp = output_biom_fp
 
     # get sample names present in potu table
     # sample_names, taxon_names, data, lineages

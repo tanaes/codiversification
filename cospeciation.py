@@ -1,3 +1,4 @@
+
 from __future__ import division
 
 __author__ = "Jon Sanders"
@@ -35,7 +36,7 @@ from cogent.maths.unifrac.fast_unifrac import fast_unifrac
 from cogent import LoadTree, LoadSeqs, DNA
 from cogent.util.dict2d import Dict2D, largest
 
-from skbio.math.stats.evolve.hommola import hommola_cospeciation
+from skbio.stats.evolve import hommola_cospeciation
 
 def cogent_dist_to_qiime_dist(dist_tuple_dict):
     """
@@ -185,8 +186,8 @@ def recursive_hommola(aligned_otu_seqs, host_subtree, host_dm, otu_tree, otu_tab
             # append number of symbionts and hosts for this node
             s_tips.append(len(otu_dm_sub[0]))
             h_tips.append(len(host_dm_sub[0]))
-            # calculate pemutation p value for hommola test for this node
-            p, r, r_distro = hommola_cospeciation(host_dm_sub[1], otu_dm_sub[1],
+            # calculate permutation p value for hommola test for this node
+            r, p, r_distro = hommola_cospeciation(host_dm_sub[1], otu_dm_sub[1],
                                                        interaction_sub, permutations)
             # append to results list
             p_vals.append(p)
@@ -515,7 +516,7 @@ def write_summary_file(results_dict, results_header, output_dir, otu_to_taxonomy
         summary_file.write(outline)
     summary_file.close()
 
-def write_sig_nodes_files(results_dict, results_header, output_dir, otu_to_taxonomy, sig_nodes, fdr_sig_nodes, bh_fdr_sig_nodes, bonferroni_sig_nodes):
+def write_sig_nodes_files(results_dict, results_header, output_dir, otu_to_taxonomy, sig_nodes, bh_fdr_sig_nodesnodes, bh_fdr_sig_nodes, bonferroni_sig_nodes):
     #Write lists of significant nodes for each standard of significance
     for shortname, name, var in [('uncorrected', 'p_vals', sig_nodes), ('FDR', 
         'FDR_pvals', fdr_sig_nodes), ('bonferroni', 'Bonferroni_pvals', 
