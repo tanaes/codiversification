@@ -18,8 +18,7 @@ import sys
 import glob
 from collections import defaultdict
 
-#commented out for temporary debugging option
-#from cospeciation import recursive_hommola, make_dists_and_tree, reconcile_hosts_symbionts, write_cospeciation_results, collapse_and_write_otu_table
+from cospeciation import recursive_hommola, make_dists_and_tree, reconcile_hosts_symbionts, write_cospeciation_results, collapse_and_write_otu_table
 
 from biom import load_table
 from qiime.util import make_option
@@ -154,11 +153,7 @@ script_info['version'] = __version__
 def main():
     option_parser, opts, args = parse_command_line_parameters(**script_info)
     
-    #use debugging version if asked
-    if opts.debug:
-        from cospeciation_debug import recursive_hommola, make_dists_and_tree, reconcile_hosts_symbionts, write_cospeciation_results, collapse_and_write_otu_table
-    else:
-        from cospeciation import recursive_hommola, make_dists_and_tree, reconcile_hosts_symbionts, write_cospeciation_results, collapse_and_write_otu_table
+    from cospeciation import recursive_hommola, make_dists_and_tree, reconcile_hosts_symbionts, write_cospeciation_results, collapse_and_write_otu_table
     
     potu_table_fp = opts.potu_table_fp
     subcluster_dir = opts.cotu_table_dir
@@ -310,18 +305,9 @@ def main():
 
 
         # run hommola test
-        if opts.debug:
-        	results_list, results_header = recursive_hommola(cotu_seqs_filtered, host_subtree, host_dist_filtered, cotu_subtree, cotu_table_filtered, potu, output_dir, permutations, recurse=recurse)
-        else:
-        	results_list, results_header = recursive_hommola(cotu_seqs_filtered, host_subtree, host_dist_filtered, cotu_subtree, cotu_table_filtered, permutations, recurse=recurse)
+        results_list, results_header = recursive_hommola(cotu_seqs_filtered, host_subtree, host_dist_filtered, cotu_subtree, cotu_table_filtered, permutations, recurse=recurse)
        
         results_dict[potu] = results_list
-
-        print("p: {0}  r: {1}  h: {2}  s: {3}\n").format(
-              results_list[results_header.index('p_vals')][0],
-              results_list[results_header.index('r_vals')][0],
-              results_list[results_header.index('h_tips')][0], 
-              results_list[results_header.index('s_tips')][0])
 
     write_cospeciation_results(results_dict, results_header, significance_level, output_dir, host_tree, otu_to_taxonomy, test)
 
