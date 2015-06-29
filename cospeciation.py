@@ -549,7 +549,7 @@ def write_sig_nodes_files(results_dict, results_header, output_dir, otu_to_taxon
             sig_nodes_file.write("\n")
         sig_nodes_file.close()
 
-def reconcile_hosts_symbionts(cotu_table, host_dist):
+def reconcile_hosts_symbionts(cotu_table, host_dist, min_val=1):
 
     shared_hosts = set(cotu_table.ids(axis='sample')).intersection(host_dist[0])
 
@@ -560,7 +560,7 @@ def reconcile_hosts_symbionts(cotu_table, host_dist):
 
     # filter cOTU table again to get rid of absent cOTUs. BIOM should do this.
 
-    cotu_table_filtered.filter(lambda val, id_, metadata: 1 <= val.sum(), axis='observation', inplace=True)
+    cotu_table_filtered.filter(lambda val, id_, metadata: min_val <= val.sum(), axis='observation', inplace=True)
     
     # Filter the host_dists to match the newly trimmed subtree
     # Note: this is requiring the modified filter_dist method which

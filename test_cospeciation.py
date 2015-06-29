@@ -130,8 +130,12 @@ script_info['optional_options'] = [
                 default=1000),
     make_option('-m', '--mapping_fp', type='existing_filepath',
                 help='the sample metdata mapping file'),
+    make_option('--min_cOTU', type='float', default=1.0,
+                help='minimum counts per cOTU'),
     make_option('--collapse_fields',
                 help="comma-separated list of fields to collapse on"),
+    make_option('--collapse_potu_table', default=False, action='store_true', 
+                help="If collapsing cOTU tables, collapse pOTU tables too?"),
     make_option('--collapse_mode', type='choice', choices=collapse_modes,
         help="the mechanism for collapsing counts within groups; "
         "valid options are: %s" % ', '.join(collapse_modes), default='sum'),
@@ -154,6 +158,7 @@ def main():
     permutations = opts.permutations
     taxonomy_fp = opts.taxonomy_fp
     force = opts.force
+    min_cOTU = opts.min_cOTU
 
     options_counter = 0
 
@@ -199,7 +204,7 @@ def main():
             raise OSError("Output directory already exists. Please choose "
                 "a different directory, or force overwrite with -f.")
 
-    if collapse:
+    if collapse and opts.collapse_potu_table:
         potu_table_fp = collapse_and_write_otu_table(potu_table_fp, mapping_fp, collapse_fields, collapse_mode)
 
     # get sample names present in potu table
@@ -230,6 +235,11 @@ def main():
         # ignore comment lines
         print "Analyzing " + potu 
         cotu_table_fp = os.path.join(subcluster_dir,potu,'otu_table.biom')
+
+        if not os.path.isfile(cotu_table_fp):
+            print("cOTU table for pOTU #{0} not found".format(potu))
+            continue
+
         if collapse:
             cotu_table_fp = collapse_and_write_otu_table(cotu_table_fp, mapping_fp, collapse_fields, collapse_mode)
         # Read in cOTU file
@@ -237,7 +247,7 @@ def main():
 
         # Reconcile hosts in host DM and cOTU table
         cotu_table_filtered, host_dist_filtered = reconcile_hosts_symbionts(
-            cotu_table, host_dist)
+            cotu_table, host_dist, min_cOTU)
 
         # Read in reconciled cOTU table
         sample_names_filtered = cotu_table_filtered.ids()
@@ -250,6 +260,9 @@ def main():
 
         # Import, filter, and root cOTU tree
         cotu_tree_fp = os.path.join(subcluster_dir,potu,"rep_set.tre")
+        if not os.path.isfile(cotu_tree_fp):
+            print("cOTU tree for pOTU #{0} not found".format(potu))
+            continue
 
         with open(cotu_tree_fp, 'r') as cotu_tree_file:
             cotu_tree_unrooted = DndParser(cotu_tree_file, PhyloNode)
@@ -258,20 +271,38 @@ def main():
         # root at midpoint
         # Consider alternate step to go through and find closest DB seq
         # to root?
-        cotu_subtree = cotu_subtree_unrooted.rootAtMidpoint()
+        # SKIPPING THIS STEP because it's breaking for unknown reasons:
+
+        #cotu_subtree = cotu_subtree_unrooted.rootAtMidpoint()
+        cotu_subtree = cotu_subtree_unrooted
 
         # filter host tree
         host_subtree = host_tree.getSubTree(sample_names_filtered)
         
         align_folder = glob.glob(os.path.join(subcluster_dir,potu,'*aligned_seqs'))[0]
         # Load up and filter cOTU sequences
+        align_fp = os.path.join(align_folder,'seqs_rep_set_aligned.fasta')
+        if not os.path.isfile(cotu_tree_fp):
+            print("cOTU alignment for pOTU #{0} not found".format(potu))
+            continue
+
         aligned_otu_seqs = LoadSeqs(
-            os.path.join(align_folder,'seqs_rep_set_aligned.fasta'), moltype=DNA, label_to_name=lambda x: x.split()[0])
+            align_fp, moltype=DNA, label_to_name=lambda x: x.split()[0])
         cotu_seqs_filtered = aligned_otu_seqs.takeSeqs(list(cotu_names_filtered))
+
+        #print(cotu_subtree.asciiArt())
+        #print(host_subtree.asciiArt())
+
 
         # run hommola test
         results_list, results_header = recursive_hommola(cotu_seqs_filtered, host_subtree, host_dist_filtered, cotu_subtree, cotu_table_filtered, permutations, recurse=recurse)
         results_dict[potu] = results_list
+
+        print("p: {0}  r: {1}  h: {2}  s: {3}\n").format(
+              results_list[results_header.index('p_vals')][0],
+              results_list[results_header.index('r_vals')][0],
+              results_list[results_header.index('h_tips')][0], 
+              results_list[results_header.index('s_tips')][0])
 
     write_cospeciation_results(results_dict, results_header, significance_level, output_dir, host_tree, otu_to_taxonomy, test)
 
