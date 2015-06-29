@@ -139,8 +139,6 @@ script_info['optional_options'] = [
                 help="comma-separated list of fields to collapse on"),
     make_option('--collapse_potu_table', default=False, action='store_true', 
                 help="If collapsing cOTU tables, collapse pOTU tables too?"),
-    make_option('--debug', default=False, action='store_true', 
-                help="Use debugging version of cospeciation.py"),    
     make_option('--collapse_mode', type='choice', choices=collapse_modes,
         help="the mechanism for collapsing counts within groups; "
         "valid options are: %s" % ', '.join(collapse_modes), default='sum'),
