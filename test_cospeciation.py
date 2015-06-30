@@ -59,8 +59,9 @@ cantly correlated with the host tree, and more broadly, which of the parent OTUs
  have appeared to codiversify with the hosts. 
  
 As input, you need to provide a folder of subclustered OTUs, i.e. the results of
- otu_subcluster.py, a QIIME taxonomy file indicating the taxonomic affiliation 
-of each of those parent OTUs, and a Newick-formatted tree of relationships among
+ otu_subcluster.py, a BIOM OTU table (optionally with taxonomy information added
+ using 'biom add-metadata' with the 'observation-metadata' and 'sc-separated' flags) 
+ and a Newick-formatted tree of relationships among
  your host organisms. Alternatively, you may provide a DNA alignment or distance
  matrix in place of a host tree.
  
@@ -167,14 +168,6 @@ def main():
 
     options_counter = 0
     
-    if opts.taxonomy_fp:
-        taxonomy_fp = opts.taxonomy_fp
-        # Load taxonomic assignments for the pOTUs
-        with open(taxonomy_fp, 'U') as taxonomy_f:
-            otu_to_taxonomy = parse_taxonomy(taxonomy_f)
-    else:
-        otu_to_taxonomy = defaultdict(lambda: 'NoTaxInfo')  
-
     if opts.host_tree_fp:
         host_fp = opts.host_tree_fp
         host_input_type = "tree"
@@ -225,8 +218,13 @@ def main():
     potu_table = load_table(potu_table_fp)
     sample_names = potu_table.ids()
     potu_names = potu_table.ids(axis="observation")
-    #lineages = [lm["taxonomy"] for lm in potu_table.metadata(axis="observation")]
     
+    # use taxonomy information from potu table    
+    otu_to_taxonomy = defaultdict(lambda: 'None')
+    try:
+        otu_to_taxonomy = {id: "; ".join(metadata["taxonomy"]) for values, id, metadata in potu_table.iter(axis="observation")}
+    except:
+        print "Error loading taxonomy info"
     # Process host input (tree/alignment/matrix) and take subtree of host
     # supertree
     host_tree, host_dist = make_dists_and_tree(sample_names, host_fp, host_input_type)
@@ -278,13 +276,9 @@ def main():
             cotu_tree_unrooted = DndParser(cotu_tree_file, PhyloNode)
         
         cotu_subtree_unrooted = cotu_tree_unrooted.getSubTree(cotu_names_filtered)
-        # root at midpoint
-        # Consider alternate step to go through and find closest DB seq
-        # to root?
-        # SKIPPING THIS STEP because it's breaking for unknown reasons:
 
-        #cotu_subtree = cotu_subtree_unrooted.rootAtMidpoint()
-        cotu_subtree = cotu_subtree_unrooted
+        # root at midpoint
+        cotu_subtree = cotu_subtree_unrooted.rootAtMidpoint()
 
         # filter host tree
         host_subtree = host_tree.getSubTree(sample_names_filtered)
@@ -299,10 +293,6 @@ def main():
         aligned_otu_seqs = LoadSeqs(
             align_fp, moltype=DNA, label_to_name=lambda x: x.split()[0])
         cotu_seqs_filtered = aligned_otu_seqs.takeSeqs(list(cotu_names_filtered))
-
-        #print(cotu_subtree.asciiArt())
-        #print(host_subtree.asciiArt())
-
 
         # run hommola test
         results_list, results_header = recursive_hommola(cotu_seqs_filtered, host_subtree, host_dist_filtered, cotu_subtree, cotu_table_filtered, permutations, recurse=recurse)
