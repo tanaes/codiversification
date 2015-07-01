@@ -169,10 +169,13 @@ class HommolaTests(TestCase):
         unsorted_dm = (['VXNO', 'VXNP', 'VXNT'], array([[0., 0.704, 0.157],
                             [0.704, 0., 0.339],
                             [0.157, 0.339, 0.]]))
+
         sample_order = ['VXNP', 'VXNO', 'VXNT']
+
         expected_dm = (['VXNP', 'VXNO', 'VXNT'], array([[0., 0.704, 0.339],
                             [0.704, 0., 0.157],
                             [0.339, 0.157, 0.]]))
+        
         dm = sort_dm_by_sample(unsorted_dm, sample_order)
         
         self.assertEqual(dm, expected_dm)

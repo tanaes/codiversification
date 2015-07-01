@@ -77,40 +77,13 @@ def cogent_dist_to_qiime_dist(dist_tuple_dict):
     # generate and return Qiime distance matrix
     return parse_distmat(StringIO(dist_delim[1:]))
 
-
-"""
-dist_tuple_dict = {('SHAJ', 'SHAK'): 0.10750048520885,
- ('SHAJ', 'SHAM'): 0.10750048520885,
- ('SHAJ', 'SHOA'): 0.0147434146325,
- ('SHAJ', 'SHOG'): 0.0147434146325,
- ('SHAK', 'SHAJ'): 0.10750048520885,
- ('SHAK', 'SHAM'): 0.048024926561999998,
- ('SHAK', 'SHOA'): 0.10750048520885,
- ('SHAK', 'SHOG'): 0.10750048520885,
- ('SHAM', 'SHAJ'): 0.10750048520885,
- ('SHAM', 'SHAK'): 0.048024926561999998,
- ('SHAM', 'SHOA'): 0.10750048520885,
- ('SHAM', 'SHOG'): 0.10750048520885,
- ('SHOA', 'SHAJ'): 0.0147434146325,
- ('SHOA', 'SHAK'): 0.10750048520885,
- ('SHOA', 'SHAM'): 0.10750048520885,
- ('SHOA', 'SHOG'): 0.0,
- ('SHOG', 'SHAJ'): 0.0147434146325,
- ('SHOG', 'SHAK'): 0.10750048520885,
- ('SHOG', 'SHAM'): 0.10750048520885,
- ('SHOG', 'SHOA'): 0.0}
- 
- 
- qiime_distmat = (['SHOA', 'SHOG', 'SHAJ', 'SHAK', 'SHAM'],
- array([[ 0.01474341,  0.01474341,  0.        ,  0.10750049,  0.10750049],
-       [ 0.        ,  0.        ,  0.01474341,  0.10750049,  0.10750049],
-       [ 0.10750049,  0.10750049,  0.10750049,  0.04802493,  0.        ],
-       [ 0.        ,  0.        ,  0.01474341,  0.10750049,  0.10750049],
-       [ 0.10750049,  0.10750049,  0.10750049,  0.        ,  0.04802493]]))
- 
-""" 
-
 def cache_tipnames(tree):
+    """
+    Function to traverse a tree and store dependent tip names for each node.
+    Replaces the getTipNames() method in cogent, should be replaced if/when this
+    functionality is native to skbio. 
+    """
+
     for n in tree.postorder(include_self=True):
         if n.isTip():
             n._tip_names = [n.Name]
@@ -118,7 +91,7 @@ def cache_tipnames(tree):
             n._tip_names = reduce(add, [c._tip_names for c in n.Children])
 
 def recursive_hommola(aligned_otu_seqs, host_subtree, host_dm, otu_tree, otu_table, 
-                permutations=1000, recurse=False):
+                permutations=10000, recurse=False):
     """
     Applies Hommola et al test of cospeciation recursively to OTU tree.
 
@@ -134,11 +107,12 @@ def recursive_hommola(aligned_otu_seqs, host_subtree, host_dm, otu_tree, otu_tab
 
     sample_names = otu_table.ids()
     taxon_names = otu_table.ids(axis="observation")
+
+    # convert OTU table to presence/absence interaction matrix
     presence_absence = otu_table.pa(inplace=False)
     interaction = numpy.asarray(list(presence_absence.iter_data(axis='observation')))
     
     # calculate pairise distances between OTUs
-
     dist_calc = TN93Pair(DNA, alignment=aligned_otu_seqs)
     dist_calc.run()
 
@@ -146,13 +120,9 @@ def recursive_hommola(aligned_otu_seqs, host_subtree, host_dm, otu_tree, otu_tab
 
     otu_dm = cogent_dist_to_qiime_dist(otu_dists)
 
+    # Sort dms into same order as sample and taxon name lists
     host_dm = sort_dm_by_sample(host_dm, sample_names)
     otu_dm = sort_dm_by_sample(otu_dm, taxon_names)
-
-    # convert OTU table to binary array, throwing out all OTUs below a given
-    # thresh.
-
-    # traverse OTU tree and test each node
 
     # initialize our output lists
     s_nodes = []
@@ -162,11 +132,11 @@ def recursive_hommola(aligned_otu_seqs, host_subtree, host_dm, otu_tree, otu_tab
     h_tips = []
     r_vals = []
     r_distro_vals = []
-    # print "just before loop"
-    # iterate over the tree of child OTUs
 
+    # store the child tip names for each node on the tree
     cache_tipnames(otu_tree)
 
+    # iterate over the tree of child OTUs
     for node in otu_tree.preorder():
 
         # get just OTUs in this node
@@ -187,6 +157,7 @@ def recursive_hommola(aligned_otu_seqs, host_subtree, host_dm, otu_tree, otu_tab
             # append number of symbionts and hosts for this node
             s_tips.append(len(otu_dm_sub[0]))
             h_tips.append(len(host_dm_sub[0]))
+
             # calculate permutation p value for hommola test for this node
             r, p, r_distro = hommola_cospeciation(host_dm_sub[1], otu_dm_sub[1],
                                                           interaction_sub, permutations)
@@ -201,19 +172,15 @@ def recursive_hommola(aligned_otu_seqs, host_subtree, host_dm, otu_tree, otu_tab
 
     results_list = [p_vals, s_tips, h_tips, s_nodes, h_nodes, r_vals]
 
-
     results_header = ['p_vals', 's_tips', 'h_tips', 's_nodes', 'h_nodes', 'r_vals']
 
-    # suppressed: return the distribution of r values
-    # 'r_distro_vals':r_distro_vals
     return (results_list, results_header)
 
 def make_dists_and_tree(sample_names, host_fp, host_input_type):
     """
     This routine reads in your host information (tree, alignment, or distance 
     matrix) and converts it to a distance matrix and a tree. These are subsetted
-    to just the samples passed to the routine. The resulting subtree is 
-    written to the same directory as the original tree for reference. Both the 
+    to just the samples passed to the routine. Both the 
     distance matrix and host subtree are passed back to the main routine for 
     testing.
     """
@@ -231,12 +198,14 @@ def make_dists_and_tree(sample_names, host_fp, host_input_type):
         host_tree, host_dist = processMatrix(host_str)
 
     sample_names = [x for x in sample_names if x in host_tree.getTipNames()]
+   
     # Get host subtree and filter distance matrix so they only include samples
     # present in the pOTU table
     host_tree = host_tree.getSubTree(sample_names)
 
     host_dist = filter_samples_from_distance_matrix(
         host_dist, sample_names, negate=True)
+
     return host_tree, host_dist
 
 
@@ -304,8 +273,9 @@ def sort_dm_by_sample(dm, sample_names):
 
 def filter_dms(otu_dm, host_dm, interaction, otu_subset):
     """This filters a host dm, symbiont dm, and interaction matrix by a set of
-    sybionts (otus) defined by otu_subset, and returns the sliced values.
+    symbionts (otus) defined by otu_subset, and returns the sliced values.
     Also eliminates any hosts that had no otus present."""
+
     # input host dm, symbiont dm, and otu data
 
     # return filtered dms,
@@ -320,8 +290,8 @@ def filter_dms(otu_dm, host_dm, interaction, otu_subset):
         if otu_dm[0][i] in otu_subset:
             s_vec.append(i)
             s_names.append(otu_dm[0][i])
-    # slice symbiont distance matrix down to only cOTUs in this node
 
+    # slice symbiont distance matrix down to only cOTUs in this node
     s_slice = otu_dm[1][numpy.ix_(s_vec, s_vec)]
 
     # slice interaction matrix down to only cOTUs in this node
@@ -350,10 +320,12 @@ def filter_dms(otu_dm, host_dm, interaction, otu_subset):
 
     return(sliced_otu_dm, sliced_host_dm, sliced_interaction)
 
+
 def processTree(fstr):
     # Attempt to load input as tree
     host_tree = LoadTree(treestring=fstr)
     host_dist = cogent_dist_to_qiime_dist(host_tree.getDistances())
+
     return host_tree, host_dist
 
 
@@ -366,20 +338,24 @@ def processAlignment(fstr):
 
     # generate tree from matrix
     host_tree = distmat_to_tree(host_dist)
+
     return host_tree, host_dist
 
 
 def processMatrix(fstr):
     dists = fstr.splitlines()
+
     # Parse distance matrix and build tree
     host_dist = parse_distmat(dists)
     host_tree = distmat_to_tree(host_dist)
+
     return host_tree, host_dist
 
 
 def distmat_to_tree(distmat):
     dist_headers, dist_matrix = distmat
     cogent_host_dist = {}
+
     # Loop through host distance matrix to create a dictionary of pairwise
     # distances
     for i, item in enumerate(dist_matrix):
@@ -387,8 +363,8 @@ def distmat_to_tree(distmat):
             if i != j:
                 cogent_host_dist[
                     (dist_headers[i], dist_headers[j])] = dist_matrix[i][j]
-    # Generate tree from distance matrix
 
+    # Generate tree from distance matrix
     return nj.nj(cogent_host_dist)
 
 def add_corrections_to_results_dict(results_dict, results_header):
@@ -489,20 +465,20 @@ def get_sig_nodes(results_dict, results_header, significance_level):
     return sig_nodes, fdr_sig_nodes, bh_fdr_sig_nodes, bonferroni_sig_nodes
 
 def collapse_and_write_otu_table(otu_table_fp, mapping_fp, collapse_fields, collapse_mode):
-        collapsed_metadata, collapsed_table = \
-            collapse_samples(load_table(otu_table_fp),
-                             open(mapping_fp, 'U'),
-                             collapse_fields,
-                             collapse_mode)
+    collapsed_metadata, collapsed_table = \
+        collapse_samples(load_table(otu_table_fp),
+                         open(mapping_fp, 'U'),
+                         collapse_fields,
+                         collapse_mode)
 
-        output_biom_fp = '_'.join([os.path.splitext(otu_table_fp)[0]] + 
-                                    collapse_fields) + os.path.splitext(otu_table_fp)[1]
+    output_biom_fp = '_'.join([os.path.splitext(otu_table_fp)[0]] + 
+                                collapse_fields) + os.path.splitext(otu_table_fp)[1]
 
-        #print collapsed_table
+    #print collapsed_table
 
-        write_biom_table(collapsed_table, output_biom_fp, write_hdf5=False)
+    write_biom_table(collapsed_table, output_biom_fp, write_hdf5=False)
 
-        return output_biom_fp
+    return output_biom_fp
 
 def write_per_otu_results_file(results_dict, results_header, output_dir, test):
     #Write per-OTU results files:
