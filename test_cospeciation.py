@@ -220,7 +220,7 @@ def main():
 
     if collapse and opts.collapse_potu_table:
         potu_table_fp = collapse_and_write_otu_table(potu_table_fp, mapping_fp, collapse_fields, collapse_mode)
-  
+        
     # get sample names present in potu table
     # sample_names, taxon_names, data, lineages
     potu_table = load_table(potu_table_fp)
@@ -229,10 +229,12 @@ def main():
     
     # use taxonomy information from potu table    
     otu_to_taxonomy = defaultdict(lambda: 'None')
+    
     try:
         otu_to_taxonomy = {id: "; ".join(metadata["taxonomy"]) for values, id, metadata in potu_table.iter(axis="observation")}
     except:
         print "Error loading taxonomy info"
+    
     # Process host input (tree/alignment/matrix) and take subtree of host
     # supertree
     try:
