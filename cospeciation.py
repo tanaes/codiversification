@@ -216,6 +216,76 @@ def hommola_cospeciation(host_dist, par_dist, interaction, permutations=999):
     return corr_coeff, p_value, perm_stats
 
 
+def hommola_cospeciation_host(host_dist, par_dist, interaction, permutations=999):
+    """Perform Hommola et al (2009) host/parasite cospeciation test.
+
+    Performs a modification of the Hommola et al cospeciation test in which
+    only the host distance matrix is permuted, leaving all relationships
+    among host and symbionts the same. 
+
+    """
+    host_dist = DistanceMatrix(host_dist)
+    par_dist = DistanceMatrix(par_dist)
+    interaction = np.asarray(interaction, dtype=bool)
+
+    num_hosts = host_dist.shape[0]
+    num_pars = par_dist.shape[0]
+
+    if num_hosts < 3 or num_pars < 3:
+        raise ValueError("Distance matrices must be a minimum of 3x3 in size.")
+    if num_hosts != interaction.shape[1]:
+        raise ValueError("Number of interaction matrix columns must match "
+                         "number of hosts in `host_dist`.")
+    if num_pars != interaction.shape[0]:
+        raise ValueError("Number of interaction matrix rows must match "
+                         "number of parasites in `par_dist`.")
+    if permutations < 0:
+        raise ValueError("Number of permutations must be greater than or "
+                         "equal to zero.")
+    if interaction.sum() < 3:
+        raise ValueError("Must have at least 3 host-parasite interactions in "
+                         "`interaction`.")
+
+    # shortcut to eliminate nested for-loops specifying pairwise interaction
+    # partners as randomizeable indices
+    pars, hosts = np.nonzero(interaction)
+    pars_k_labels, pars_t_labels = _gen_lists(pars)
+    hosts_k_labels, hosts_t_labels = _gen_lists(hosts)
+
+    # get a vector of pairwise distances for each interaction edge
+    x = _get_dist(hosts_k_labels, hosts_t_labels, host_dist.data,
+                  np.arange(num_hosts))
+    y = _get_dist(pars_k_labels, pars_t_labels, par_dist.data,
+                  np.arange(num_pars))
+
+    # calculate the observed correlation coefficient for these hosts/symbionts
+    corr_coeff = pearsonr(x, y)[0]
+
+    # initialize list of shuffled correlation vals
+    perm_stats = np.empty(permutations)
+
+    if permutations == 0 or np.isnan(corr_coeff):
+        p_value = np.nan
+        perm_stats.fill(np.nan)
+    else:
+        for i in range(permutations):
+            # generate a shuffled host distance matrix
+            host_dist_perm = host_dist.permute()
+      
+            # get pairwise distances in shuffled order
+            x_p = _get_dist(hosts_k_labels, hosts_t_labels, host_dist_perm.data,
+                          np.arange(num_hosts))
+            y = _get_dist(pars_k_labels, pars_t_labels, par_dist.data,
+                          np.arange(num_pars))
+
+            # calculate shuffled correlation coefficient
+            perm_stats[i] = pearsonr(x_p, y)[0]
+
+        p_value = ((perm_stats >= corr_coeff).sum() + 1) / (permutations + 1)
+
+    return corr_coeff, p_value, perm_stats
+
+
 def _get_dist(k_labels, t_labels, dists, index):
     """Subset a distance matrix using a set of (randomizable) index labels.
     Parameters
@@ -263,7 +333,6 @@ def _gen_lists(labels):
     i_array, j_array = np.transpose(np.tri(len(labels)-1)).nonzero()
     j_array = j_array + 1
     return labels[i_array], labels[j_array]
-
 
 
 def cogent_dist_to_qiime_dist(dist_tuple_dict):

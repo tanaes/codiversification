@@ -115,6 +115,36 @@ class HommolaCospeciationTests(unittest.TestCase):
 
         npt.assert_allclose(obs_perm_stats, exp_perm_stats)
 
+    def test_hommola_cospeciation_host_sig(self):
+        np.random.seed(1)
+
+        obs_r, obs_p, obs_perm_stats = hommola_cospeciation_host(
+            self.hdist, self.pdist, self.interact, 9)
+        exp_p = .1
+        exp_r = 0.83170965463247915
+        exp_perm_stats = np.array([ 0.06451683,  0.31988833,  0.00816571,
+                                0.07187642,  0.07187642, 0.46916955,
+                                -0.0678993 ,  0.57579899,  0.31895164])
+        self.assertAlmostEqual(obs_p, exp_p)
+        self.assertAlmostEqual(obs_r, exp_r)
+
+        npt.assert_allclose(obs_perm_stats, exp_perm_stats, rtol=1e-4)
+
+    def test_hommola_cospeciation_host_asymmetric(self):
+        np.random.seed(1)
+
+        obs_r, obs_p, obs_perm_stats = hommola_cospeciation_host(
+            self.hdist_4x4, self.pdist, self.interact_5x4, 9)
+        exp_p = 0.6
+        exp_r = 0.85732140997411233
+        exp_perm_stats = np.array([0.945732,  0.428661,  0.945732,  0.945732,
+                                   0.945732,  0.35465 , 0.428661,  0.168173,
+                                   0.95298 ])
+        self.assertAlmostEqual(obs_p, exp_p)
+        self.assertAlmostEqual(obs_r, exp_r)
+
+        npt.assert_allclose(obs_perm_stats, exp_perm_stats, rtol=1e-4)
+
     def test_hommola_cospeciation_no_sig(self):
         np.random.seed(1)
 
