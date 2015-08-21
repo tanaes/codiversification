@@ -16,18 +16,26 @@ from qiime.util import make_option
 import os
 import sys
 import glob
+from collections import defaultdict
 
-from cospeciation import recursive_hommola, make_dists_and_tree, reconcile_hosts_symbionts, write_cospeciation_results
+from cospeciation import recursive_hommola, make_dists_and_tree, reconcile_hosts_symbionts, write_cospeciation_results, collapse_and_write_otu_table
+
 from biom import load_table
 from qiime.util import make_option
 from qiime.util import load_qiime_config, parse_command_line_parameters,\
-    get_options_lookup
+    get_options_lookup, write_biom_table
 from qiime.parse import parse_qiime_parameters, parse_taxonomy
 import os.path
 import os
 from cogent.parse.tree import DndParser
 from cogent.core.tree import PhyloNode
 from cogent import LoadTree, LoadSeqs, DNA
+
+from qiime.group import (collapse_samples, get_collapse_fns,
+                          mapping_lines_from_collapsed_df)
+
+collapse_fns = get_collapse_fns()
+collapse_modes = collapse_fns.keys()
 
 # the following 3 imports added 2013-07-09 by Aaron Behr
 # for method cogent_dist_to_qiime_dist
@@ -51,8 +59,9 @@ cantly correlated with the host tree, and more broadly, which of the parent OTUs
  have appeared to codiversify with the hosts. 
  
 As input, you need to provide a folder of subclustered OTUs, i.e. the results of
- otu_subcluster.py, a QIIME taxonomy file indicating the taxonomic affiliation 
-of each of those parent OTUs, and a Newick-formatted tree of relationships among
+ otu_subcluster.py, a BIOM OTU table (optionally with taxonomy information added
+ using 'biom add-metadata' with the 'observation-metadata' and 'sc-separated' flags) 
+ and a Newick-formatted tree of relationships among
  your host organisms. Alternatively, you may provide a DNA alignment or distance
  matrix in place of a host tree.
  
@@ -103,11 +112,11 @@ script_info['required_options'] = [
                 help='the input pOTU table file [REQUIRED]'),
     options_lookup["output_dir"],
     make_option('-T', '--test', type="choice", choices=["unifrac", "hommola", "hommola_recursive"],
-                help='desired test (unifrac, hommola, hommola_recursive) [REQUIRED]'),
-    make_option('-t', '--taxonomy_fp', type="existing_filepath",
-                help='parent OTU taxonomy filepath [REQUIRED]')
+                help='desired test (unifrac, hommola, hommola_recursive) [REQUIRED]')
     ]
 script_info['optional_options'] = [
+    make_option('-t', '--taxonomy_fp', type="existing_filepath",
+                help='parent OTU taxonomy filepath'),
     make_option('--host_tree_fp', type="existing_filepath",
               help='a newick-formatted tree with samples as tips [This, a host alignment, or a host distance matrix is required]'),
     make_option('--host_align_fp', type="existing_filepath",
@@ -122,7 +131,17 @@ script_info['optional_options'] = [
                 help='Desired level of significance for permutation test '
                 '[default: %default]',
                 default=1000),
-
+    make_option('-m', '--mapping_fp', type='existing_filepath',
+                help='the sample metdata mapping file'),
+    make_option('--min_cOTU', type='float', default=1.0,
+                help='minimum counts per cOTU'),
+    make_option('--collapse_fields',
+                help="comma-separated list of fields to collapse on"),
+    make_option('--collapse_potu_table', default=False, action='store_true', 
+                help="If collapsing cOTU tables, collapse pOTU tables too?"),
+    make_option('--collapse_mode', type='choice', choices=collapse_modes,
+        help="the mechanism for collapsing counts within groups; "
+        "valid options are: %s" % ', '.join(collapse_modes), default='sum'),
     make_option('--force', action='store_true',
                 dest='force', help='Force overwrite of existing output directory'
                 ' (note: existing files in output_dir will not be removed)'
@@ -134,17 +153,21 @@ script_info['version'] = __version__
 
 def main():
     option_parser, opts, args = parse_command_line_parameters(**script_info)
+    
+    from cospeciation import recursive_hommola, make_dists_and_tree, reconcile_hosts_symbionts, write_cospeciation_results, collapse_and_write_otu_table
+    
     potu_table_fp = opts.potu_table_fp
     subcluster_dir = opts.cotu_table_dir
     output_dir = opts.output_dir
     significance_level = opts.significance_level
     test = opts.test
     permutations = opts.permutations
-    taxonomy_fp = opts.taxonomy_fp
+    
     force = opts.force
+    min_cOTU = opts.min_cOTU
 
     options_counter = 0
-
+    
     if opts.host_tree_fp:
         host_fp = opts.host_tree_fp
         host_input_type = "tree"
@@ -161,11 +184,22 @@ def main():
     if options_counter != 1:
         raise option_parser.error("Must specify exactly one of the following: path to a host tree (--host_tree_fp), host alignment (--host_align_fp), or host distance matrix (--host_dist_fp).")
 
+    if opts.mapping_fp and opts.collapse_fields:
+        collapse = True
+        mapping_fp = os.path.abspath(opts.mapping_fp)
+        collapse_fields = opts.collapse_fields.split(',')
+        collapse_mode = opts.collapse_mode
+    elif opts.mapping_fp or opts.collapse_fields:
+        raise option_parser.error("If collapsing samples in pOTU table by metadata, must provide metadata map AND fields to collapse")
+    else:
+        collapse = False
+
     # Convert inputs to absolute paths
     output_dir = os.path.abspath(output_dir)
     host_fp = os.path.abspath(host_fp)
     potu_table_fp = os.path.abspath(potu_table_fp)
     subcluster_dir = os.path.abspath(subcluster_dir)
+
 
     try:
         os.makedirs(output_dir)
@@ -176,23 +210,35 @@ def main():
             raise OSError("Output directory already exists. Please choose "
                 "a different directory, or force overwrite with -f.")
 
+    if collapse and opts.collapse_potu_table:
+        potu_table_fp = collapse_and_write_otu_table(potu_table_fp, mapping_fp, collapse_fields, collapse_mode)
+  
     # get sample names present in potu table
     # sample_names, taxon_names, data, lineages
     potu_table = load_table(potu_table_fp)
     sample_names = potu_table.ids()
     potu_names = potu_table.ids(axis="observation")
-    lineages = [lm["taxonomy"] for lm in potu_table.metadata(axis="observation")]
     
+    # use taxonomy information from potu table    
+    otu_to_taxonomy = defaultdict(lambda: 'None')
+    try:
+        otu_to_taxonomy = {id: "; ".join(metadata["taxonomy"]) for values, id, metadata in potu_table.iter(axis="observation")}
+    except:
+        print "Error loading taxonomy info"
     # Process host input (tree/alignment/matrix) and take subtree of host
     # supertree
-    host_tree, host_dist = make_dists_and_tree(sample_names, host_fp, host_input_type)
+    try:
+        host_tree, host_dist = make_dists_and_tree(sample_names, host_fp, host_input_type)
+    except:
+        print "Problem reconciling host tree and otu table."
+        print "Hosts in otu table: \n"
+        print sample_names
+        print "Hosts in starting tree: \n"
+        raise
 
     # At this point, the host tree and host dist matrix have the intersect of
     # the samples in the pOTU table and the input host tree/dm.
 
-    # Load taxonomic assignments for the pOTUs
-    with open(taxonomy_fp, 'U') as taxonomy_f:
-        otu_to_taxonomy = parse_taxonomy(taxonomy_f)
 
     recurse = test == "hommola_recursive"
 
@@ -204,12 +250,30 @@ def main():
         # ignore comment lines
         print "Analyzing " + potu 
         cotu_table_fp = os.path.join(subcluster_dir,potu,'otu_table.biom')
+
+        if not os.path.isfile(cotu_table_fp):
+            print("cOTU table for pOTU #{0} not found".format(potu))
+            continue
+
+        if collapse:
+            cotu_table_fp = collapse_and_write_otu_table(cotu_table_fp, mapping_fp, collapse_fields, collapse_mode)
         # Read in cOTU file
         cotu_table = load_table(cotu_table_fp)
+        
+        try:
+            cotu_table_filtered, host_dist_filtered = reconcile_hosts_symbionts(
+                cotu_table, host_dist, min_cOTU)
+        except:
+            print "Problem reconciling host tree and otu table."
+            print "Hosts in otu table: \n"
+            print cotu_table.ids(axis="sample")
+            print "Hosts in starting tree: \n"
+            print host_dist
+            raise
 
         # Reconcile hosts in host DM and cOTU table
         cotu_table_filtered, host_dist_filtered = reconcile_hosts_symbionts(
-            cotu_table, host_dist)
+            cotu_table, host_dist, min_cOTU)
 
         # Read in reconciled cOTU table
         sample_names_filtered = cotu_table_filtered.ids()
@@ -222,14 +286,16 @@ def main():
 
         # Import, filter, and root cOTU tree
         cotu_tree_fp = os.path.join(subcluster_dir,potu,"rep_set.tre")
+        if not os.path.isfile(cotu_tree_fp):
+            print("cOTU tree for pOTU #{0} not found".format(potu))
+            continue
 
         with open(cotu_tree_fp, 'r') as cotu_tree_file:
             cotu_tree_unrooted = DndParser(cotu_tree_file, PhyloNode)
         
         cotu_subtree_unrooted = cotu_tree_unrooted.getSubTree(cotu_names_filtered)
+
         # root at midpoint
-        # Consider alternate step to go through and find closest DB seq
-        # to root?
         cotu_subtree = cotu_subtree_unrooted.rootAtMidpoint()
 
         # filter host tree
@@ -237,12 +303,18 @@ def main():
         
         align_folder = glob.glob(os.path.join(subcluster_dir,potu,'*aligned_seqs'))[0]
         # Load up and filter cOTU sequences
+        align_fp = os.path.join(align_folder,'seqs_rep_set_aligned.fasta')
+        if not os.path.isfile(cotu_tree_fp):
+            print("cOTU alignment for pOTU #{0} not found".format(potu))
+            continue
+
         aligned_otu_seqs = LoadSeqs(
-            os.path.join(align_folder,'seqs_rep_set_aligned.fasta'), moltype=DNA, label_to_name=lambda x: x.split()[0])
+            align_fp, moltype=DNA, label_to_name=lambda x: x.split()[0])
         cotu_seqs_filtered = aligned_otu_seqs.takeSeqs(list(cotu_names_filtered))
 
         # run hommola test
         results_list, results_header = recursive_hommola(cotu_seqs_filtered, host_subtree, host_dist_filtered, cotu_subtree, cotu_table_filtered, permutations, recurse=recurse)
+       
         results_dict[potu] = results_list
 
     write_cospeciation_results(results_dict, results_header, significance_level, output_dir, host_tree, otu_to_taxonomy, test)

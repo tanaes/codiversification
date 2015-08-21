@@ -1,3 +1,4 @@
+
 from __future__ import division
 
 __author__ = "Jon Sanders"
@@ -17,12 +18,13 @@ import numpy
 from random import shuffle
 from operator import add
 
-from qiime.util import load_qiime_config, parse_command_line_parameters, get_options_lookup, make_option
+from qiime.util import load_qiime_config, parse_command_line_parameters, get_options_lookup, make_option, write_biom_table
 from qiime.parse import parse_qiime_parameters, parse_taxonomy, parse_distmat, make_envs_dict, fields_to_dict
 from qiime.filter import filter_samples_from_otu_table, filter_samples_from_distance_matrix
 from qiime.workflow.upstream import run_pick_de_novo_otus
 from qiime.stats import benjamini_hochberg_step_down, bonferroni_correction, fdr_correction
 from qiime.workflow.util import call_commands_serially, no_status_updates
+from qiime.group import collapse_samples
 
 from biom import load_table
 
@@ -35,7 +37,304 @@ from cogent.maths.unifrac.fast_unifrac import fast_unifrac
 from cogent import LoadTree, LoadSeqs, DNA
 from cogent.util.dict2d import Dict2D, largest
 
-from skbio.math.stats.evolve.hommola import hommola_cospeciation
+#from skbio.stats.evolve import hommola_cospeciation
+
+from skbio import DistanceMatrix
+from scipy.stats import pearsonr
+import numpy as np
+
+def hommola_cospeciation(host_dist, par_dist, interaction, permutations=999):
+    """Perform Hommola et al (2009) host/parasite cospeciation test.
+    This test for host/parasite cospeciation is as described in [1]_. This test
+    is a modification of a Mantel test, expanded to accept the case where
+    multiple hosts map to a single parasite (and vice versa).
+    For a basic Mantel test, the distance matrices being compared must have the
+    same number of values. To determine the significance of the correlations
+    between distances in the two matrices, the correlation coefficient of those
+    distances is calculated and compared to the correlation coefficients
+    calculated from a set of matrices in which rows and columns have been
+    permuted.
+    In this test, rather than comparing host-host to parasite-parasite
+    distances directly (requiring one host per parasite), the distances are
+    compared for each interaction edge between host and parasite. Thus, a host
+    interacting with two different parasites will be represented in two
+    different edges, with the host-host distance for the comparison between
+    those edges equal to zero, and the parasite-parasite distance equal to the
+    distance between those two parasites. Like in the Mantel test, significance
+    of the interaction is assessed by permutation, in this case permutation of
+    the host-symbiont interaction links.
+    Note that the null hypothesis being tested here is that the hosts and
+    parasites have evolved independently of one another. The alternative to
+    this is a somewhat weaker case than what is often implied with the term
+    'cospeciation,' which is that each incidence of host speciation is
+    recapitulated in an incidence of symbiont speciation (strict
+    co-cladogenesis). Although there may be many factors that could contribute
+    to non-independence of host and symbiont phylogenies, this loss of
+    explanatory specificity comes with increased robustness to phylogenetic
+    uncertainty. Thus, this test may be especially useful for cases where host
+    and/or symbiont phylogenies are poorly resolved, or when simple correlation
+    between host and symbiont evolution is of more interest than strict
+    co-cladogenesis.
+    This test requires pairwise distance matrices for hosts and symbionts, as
+    well as an interaction matrix specifying links between hosts (in columns)
+    and symbionts (in rows). This interaction matrix should have the same
+    number of columns as the host distance matrix, and the same number of rows
+    as the symbiont distance matrix. Interactions between hosts and symbionts
+    should be indicated by values of ``1`` or ``True``, with non-interactions
+    indicated by values of ``0`` or ``False``.
+    Parameters
+    ----------
+    host_dist : 2-D array_like or DistanceMatrix
+        Symmetric matrix of m x m pairwise distances between hosts.
+    par_dist : 2-D array_like or DistanceMatrix
+        Symmetric matrix of n x n pairwise distances between parasites.
+    interaction : 2-D array_like, bool
+        n x m binary matrix of parasite x host interactions. Order of hosts
+        (columns) should be identical to order of hosts in `host_dist`, as
+        should order of parasites (rows) be identical to order of parasites in
+        `par_dist`.
+    permutations : int, optional
+        Number of permutations used to compute p-value. Must be greater than or
+        equal to zero. If zero, statistical significance calculations will be
+        skipped and the p-value will be ``np.nan``.
+    Returns
+    -------
+    corr_coeff : float
+        Pearson correlation coefficient of host : parasite association.
+    p_value : float
+        Significance of host : parasite association computed using
+        `permutations` and a one-sided (greater) alternative hypothesis.
+    perm_stats : 1-D numpy.ndarray, float
+        Correlation coefficients observed using permuted host : parasite
+        interactions. Length will be equal to the number of permutations used
+        to compute p-value (see `permutations` parameter above).
+    See Also
+    --------
+    skbio.stats.distance.mantel
+    scipy.stats.pearsonr
+    Notes
+    -----
+    It is assumed that the ordering of parasites in `par_dist` and hosts in
+    `host_dist` are identical to their ordering in the rows and columns,
+    respectively, of the interaction matrix.
+    This code is loosely based on the original R code from [1]_.
+    References
+    ----------
+    .. [1] Hommola K, Smith JE, Qiu Y, Gilks WR (2009) A Permutation Test of
+       Host-Parasite Cospeciation. Molecular Biology and Evolution, 26,
+       1457-1468.
+    Examples
+    --------
+    >>> from skbio.stats.evolve import hommola_cospeciation
+    Create arrays for host distances, parasite distances, and their
+    interactions (data taken from example in [1]_):
+    >>> hdist = [[0,3,8,8,9], [3,0,7,7,8], [8,7,0,6,7], [8,7,6,0,3],
+    ...          [9,8,7,3,0]]
+    >>> pdist = [[0,5,8,8,8], [5,0,7,7,7], [8,7,0,4,4], [8,7,4,0,2],
+    ...          [8,7,4,2,0]]
+    >>> interaction = [[1,0,0,0,0], [0,1,0,0,0], [0,0,1,0,0], [0,0,0,1,0],
+    ...                [0,0,0,1,1]]
+    Run the cospeciation test with 99 permutations. Note that the correlation
+    coefficient for the observed values counts against the final reported
+    p-value:
+    >>> corr_coeff, p_value, perm_stats = hommola_cospeciation(
+    ...     hdist, pdist, interaction, permutations=99)
+    >>> corr_coeff
+    0.83170965463247903
+    In this case, the host distances have a fairly strong positive correlation
+    with the symbiont distances. However, this may also reflect structure
+    inherent in the phylogeny, and is not itself indicative of significance.
+    >>> p_value <= 0.05
+    True
+    After permuting host : parasite interactions, we find that the observed
+    correlation is indeed greater than we would expect by chance.
+    """
+    host_dist = DistanceMatrix(host_dist)
+    par_dist = DistanceMatrix(par_dist)
+    interaction = np.asarray(interaction, dtype=bool)
+
+    num_hosts = host_dist.shape[0]
+    num_pars = par_dist.shape[0]
+
+    if num_hosts < 3 or num_pars < 3:
+        raise ValueError("Distance matrices must be a minimum of 3x3 in size.")
+    if num_hosts != interaction.shape[1]:
+        raise ValueError("Number of interaction matrix columns must match "
+                         "number of hosts in `host_dist`.")
+    if num_pars != interaction.shape[0]:
+        raise ValueError("Number of interaction matrix rows must match "
+                         "number of parasites in `par_dist`.")
+    if permutations < 0:
+        raise ValueError("Number of permutations must be greater than or "
+                         "equal to zero.")
+    if interaction.sum() < 3:
+        raise ValueError("Must have at least 3 host-parasite interactions in "
+                         "`interaction`.")
+
+    # shortcut to eliminate nested for-loops specifying pairwise interaction
+    # partners as randomizeable indices
+    pars, hosts = np.nonzero(interaction)
+    pars_k_labels, pars_t_labels = _gen_lists(pars)
+    hosts_k_labels, hosts_t_labels = _gen_lists(hosts)
+
+    # get a vector of pairwise distances for each interaction edge
+    x = _get_dist(hosts_k_labels, hosts_t_labels, host_dist.data,
+                  np.arange(num_hosts))
+    y = _get_dist(pars_k_labels, pars_t_labels, par_dist.data,
+                  np.arange(num_pars))
+
+    # calculate the observed correlation coefficient for these hosts/symbionts
+    corr_coeff = pearsonr(x, y)[0]
+
+    # now do permutatitons. initialize index lists of the appropriate size
+    mp = np.arange(num_pars)
+    mh = np.arange(num_hosts)
+
+    # initialize list of shuffled correlation vals
+    perm_stats = np.empty(permutations)
+
+    if permutations == 0 or np.isnan(corr_coeff):
+        p_value = np.nan
+        perm_stats.fill(np.nan)
+    else:
+        for i in range(permutations):
+            # generate a shuffled list of indexes for each permutation. this
+            # effectively randomizes which host is associated with which
+            # symbiont, but maintains the distribution of genetic distances
+            np.random.shuffle(mp)
+            np.random.shuffle(mh)
+
+            # get pairwise distances in shuffled order
+            y_p = _get_dist(pars_k_labels, pars_t_labels, par_dist.data, mp)
+            x_p = _get_dist(hosts_k_labels, hosts_t_labels, host_dist.data, mh)
+
+            # calculate shuffled correlation coefficient
+            perm_stats[i] = pearsonr(x_p, y_p)[0]
+
+        p_value = ((perm_stats >= corr_coeff).sum() + 1) / (permutations + 1)
+
+    return corr_coeff, p_value, perm_stats
+
+
+def hommola_cospeciation_host(host_dist, par_dist, interaction, permutations=999):
+    """Perform Hommola et al (2009) host/parasite cospeciation test.
+
+    Performs a modification of the Hommola et al cospeciation test in which
+    only the host distance matrix is permuted, leaving all relationships
+    among host and symbionts the same. 
+
+    """
+    host_dist = DistanceMatrix(host_dist)
+    par_dist = DistanceMatrix(par_dist)
+    interaction = np.asarray(interaction, dtype=bool)
+
+    num_hosts = host_dist.shape[0]
+    num_pars = par_dist.shape[0]
+
+    if num_hosts < 3 or num_pars < 3:
+        raise ValueError("Distance matrices must be a minimum of 3x3 in size.")
+    if num_hosts != interaction.shape[1]:
+        raise ValueError("Number of interaction matrix columns must match "
+                         "number of hosts in `host_dist`.")
+    if num_pars != interaction.shape[0]:
+        raise ValueError("Number of interaction matrix rows must match "
+                         "number of parasites in `par_dist`.")
+    if permutations < 0:
+        raise ValueError("Number of permutations must be greater than or "
+                         "equal to zero.")
+    if interaction.sum() < 3:
+        raise ValueError("Must have at least 3 host-parasite interactions in "
+                         "`interaction`.")
+
+    # shortcut to eliminate nested for-loops specifying pairwise interaction
+    # partners as randomizeable indices
+    pars, hosts = np.nonzero(interaction)
+    pars_k_labels, pars_t_labels = _gen_lists(pars)
+    hosts_k_labels, hosts_t_labels = _gen_lists(hosts)
+
+    # get a vector of pairwise distances for each interaction edge
+    x = _get_dist(hosts_k_labels, hosts_t_labels, host_dist.data,
+                  np.arange(num_hosts))
+    y = _get_dist(pars_k_labels, pars_t_labels, par_dist.data,
+                  np.arange(num_pars))
+
+    # calculate the observed correlation coefficient for these hosts/symbionts
+    corr_coeff = pearsonr(x, y)[0]
+
+    # initialize list of shuffled correlation vals
+    perm_stats = np.empty(permutations)
+
+    if permutations == 0 or np.isnan(corr_coeff):
+        p_value = np.nan
+        perm_stats.fill(np.nan)
+    else:
+        for i in range(permutations):
+            # generate a shuffled host distance matrix
+            host_dist_perm = host_dist.permute()
+      
+            # get pairwise distances in shuffled order
+            x_p = _get_dist(hosts_k_labels, hosts_t_labels, host_dist_perm.data,
+                          np.arange(num_hosts))
+            y = _get_dist(pars_k_labels, pars_t_labels, par_dist.data,
+                          np.arange(num_pars))
+
+            # calculate shuffled correlation coefficient
+            perm_stats[i] = pearsonr(x_p, y)[0]
+
+        p_value = ((perm_stats >= corr_coeff).sum() + 1) / (permutations + 1)
+
+    return corr_coeff, p_value, perm_stats
+
+
+def _get_dist(k_labels, t_labels, dists, index):
+    """Subset a distance matrix using a set of (randomizable) index labels.
+    Parameters
+    ----------
+    k_labels : numpy.array
+        index labels specifying row-wise member of pairwise interaction
+    t_labels : numpy.array
+        index labels specifying column-wise member of pairwise interaction
+    dists : numpy.array
+        pairwise distance matrix
+    index : numpy.array of int
+        permutable indices for changing order in pairwise distance matrix
+    Returns
+    -------
+    vec : list of float
+        List of distances associated with host:parasite edges.
+    """
+    return dists[index[k_labels], index[t_labels]]
+
+
+def _gen_lists(labels):
+    """Generate matched lists of row and column index labels.
+    Shortcut function for generating matched lists of row and col index
+    labels for the set of pairwise comparisons specified by the list of those
+    indices recovered using ``np.nonzero(interaction)``.
+    Reproduces values of iterated indices from the nested for-loops contained
+    in ``get_dist`` function in original code from [1]_.
+    Parameters
+    ----------
+    labels : numpy.array
+        array containing the indices of nonzero elements in one dimension of an
+        interaction matrix
+    Returns
+    -------
+    k_labels : numpy.array
+        index labels specifying row-wise member of pairwise interaction
+    t_labels : numpy.array
+        index labels specifying column-wise member of pairwise interaction
+    References
+    ----------
+    .. [1] Hommola K, Smith JE, Qiu Y, Gilks WR (2009) A Permutation Test of
+       Host-Parasite Cospeciation. Molecular Biology and Evolution, 26,
+       1457-1468.
+    """
+    i_array, j_array = np.transpose(np.tri(len(labels)-1)).nonzero()
+    j_array = j_array + 1
+    return labels[i_array], labels[j_array]
+
+
 
 def cogent_dist_to_qiime_dist(dist_tuple_dict):
     """
@@ -75,40 +374,13 @@ def cogent_dist_to_qiime_dist(dist_tuple_dict):
     # generate and return Qiime distance matrix
     return parse_distmat(StringIO(dist_delim[1:]))
 
-
-"""
-dist_tuple_dict = {('SHAJ', 'SHAK'): 0.10750048520885,
- ('SHAJ', 'SHAM'): 0.10750048520885,
- ('SHAJ', 'SHOA'): 0.0147434146325,
- ('SHAJ', 'SHOG'): 0.0147434146325,
- ('SHAK', 'SHAJ'): 0.10750048520885,
- ('SHAK', 'SHAM'): 0.048024926561999998,
- ('SHAK', 'SHOA'): 0.10750048520885,
- ('SHAK', 'SHOG'): 0.10750048520885,
- ('SHAM', 'SHAJ'): 0.10750048520885,
- ('SHAM', 'SHAK'): 0.048024926561999998,
- ('SHAM', 'SHOA'): 0.10750048520885,
- ('SHAM', 'SHOG'): 0.10750048520885,
- ('SHOA', 'SHAJ'): 0.0147434146325,
- ('SHOA', 'SHAK'): 0.10750048520885,
- ('SHOA', 'SHAM'): 0.10750048520885,
- ('SHOA', 'SHOG'): 0.0,
- ('SHOG', 'SHAJ'): 0.0147434146325,
- ('SHOG', 'SHAK'): 0.10750048520885,
- ('SHOG', 'SHAM'): 0.10750048520885,
- ('SHOG', 'SHOA'): 0.0}
- 
- 
- qiime_distmat = (['SHOA', 'SHOG', 'SHAJ', 'SHAK', 'SHAM'],
- array([[ 0.01474341,  0.01474341,  0.        ,  0.10750049,  0.10750049],
-       [ 0.        ,  0.        ,  0.01474341,  0.10750049,  0.10750049],
-       [ 0.10750049,  0.10750049,  0.10750049,  0.04802493,  0.        ],
-       [ 0.        ,  0.        ,  0.01474341,  0.10750049,  0.10750049],
-       [ 0.10750049,  0.10750049,  0.10750049,  0.        ,  0.04802493]]))
- 
-""" 
-
 def cache_tipnames(tree):
+    """
+    Function to traverse a tree and store dependent tip names for each node.
+    Replaces the getTipNames() method in cogent, should be replaced if/when this
+    functionality is native to skbio. 
+    """
+
     for n in tree.postorder(include_self=True):
         if n.isTip():
             n._tip_names = [n.Name]
@@ -116,7 +388,7 @@ def cache_tipnames(tree):
             n._tip_names = reduce(add, [c._tip_names for c in n.Children])
 
 def recursive_hommola(aligned_otu_seqs, host_subtree, host_dm, otu_tree, otu_table, 
-                permutations=1000, recurse=False):
+                permutations=10000, recurse=False):
     """
     Applies Hommola et al test of cospeciation recursively to OTU tree.
 
@@ -132,11 +404,12 @@ def recursive_hommola(aligned_otu_seqs, host_subtree, host_dm, otu_tree, otu_tab
 
     sample_names = otu_table.ids()
     taxon_names = otu_table.ids(axis="observation")
+
+    # convert OTU table to presence/absence interaction matrix
     presence_absence = otu_table.pa(inplace=False)
     interaction = numpy.asarray(list(presence_absence.iter_data(axis='observation')))
     
     # calculate pairise distances between OTUs
-
     dist_calc = TN93Pair(DNA, alignment=aligned_otu_seqs)
     dist_calc.run()
 
@@ -144,13 +417,9 @@ def recursive_hommola(aligned_otu_seqs, host_subtree, host_dm, otu_tree, otu_tab
 
     otu_dm = cogent_dist_to_qiime_dist(otu_dists)
 
+    # Sort dms into same order as sample and taxon name lists
     host_dm = sort_dm_by_sample(host_dm, sample_names)
     otu_dm = sort_dm_by_sample(otu_dm, taxon_names)
-
-    # convert OTU table to binary array, throwing out all OTUs below a given
-    # thresh.
-
-    # traverse OTU tree and test each node
 
     # initialize our output lists
     s_nodes = []
@@ -160,11 +429,11 @@ def recursive_hommola(aligned_otu_seqs, host_subtree, host_dm, otu_tree, otu_tab
     h_tips = []
     r_vals = []
     r_distro_vals = []
-    # print "just before loop"
-    # iterate over the tree of child OTUs
 
+    # store the child tip names for each node on the tree
     cache_tipnames(otu_tree)
 
+    # iterate over the tree of child OTUs
     for node in otu_tree.preorder():
 
         # get just OTUs in this node
@@ -185,9 +454,10 @@ def recursive_hommola(aligned_otu_seqs, host_subtree, host_dm, otu_tree, otu_tab
             # append number of symbionts and hosts for this node
             s_tips.append(len(otu_dm_sub[0]))
             h_tips.append(len(host_dm_sub[0]))
-            # calculate pemutation p value for hommola test for this node
-            p, r, r_distro = hommola_cospeciation(host_dm_sub[1], otu_dm_sub[1],
-                                                       interaction_sub, permutations)
+
+            # calculate permutation p value for hommola test for this node
+            r, p, r_distro = hommola_cospeciation(host_dm_sub[1], otu_dm_sub[1],
+                                                          interaction_sub, permutations)
             # append to results list
             p_vals.append(p)
             r_vals.append(r)
@@ -199,19 +469,15 @@ def recursive_hommola(aligned_otu_seqs, host_subtree, host_dm, otu_tree, otu_tab
 
     results_list = [p_vals, s_tips, h_tips, s_nodes, h_nodes, r_vals]
 
-
     results_header = ['p_vals', 's_tips', 'h_tips', 's_nodes', 'h_nodes', 'r_vals']
 
-    # suppressed: return the distribution of r values
-    # 'r_distro_vals':r_distro_vals
     return (results_list, results_header)
 
 def make_dists_and_tree(sample_names, host_fp, host_input_type):
     """
     This routine reads in your host information (tree, alignment, or distance 
     matrix) and converts it to a distance matrix and a tree. These are subsetted
-    to just the samples passed to the routine. The resulting subtree is 
-    written to the same directory as the original tree for reference. Both the 
+    to just the samples passed to the routine. Both the 
     distance matrix and host subtree are passed back to the main routine for 
     testing.
     """
@@ -229,12 +495,14 @@ def make_dists_and_tree(sample_names, host_fp, host_input_type):
         host_tree, host_dist = processMatrix(host_str)
 
     sample_names = [x for x in sample_names if x in host_tree.getTipNames()]
+   
     # Get host subtree and filter distance matrix so they only include samples
     # present in the pOTU table
     host_tree = host_tree.getSubTree(sample_names)
 
     host_dist = filter_samples_from_distance_matrix(
         host_dist, sample_names, negate=True)
+
     return host_tree, host_dist
 
 
@@ -291,9 +559,9 @@ def filter_samples_from_distance_matrix(dm, samples_to_discard, negate=False):
 def sort_dm_by_sample(dm, sample_names):
     """Sorts a qiime distance matrix tuple in the order of sample names given"""
 
-    dm_names_dict = {x:i for i, x in enumerate(sample_names)}
+    dm_names_dict = {x:i for i, x in enumerate(dm[0])}
 
-    name_slice = [dm_names_dict[name] for name in dm[0]]
+    name_slice = [dm_names_dict[name] for name in sample_names]
 
     sorted_dm = dm[1][numpy.ix_(name_slice, name_slice)]
 
@@ -302,8 +570,9 @@ def sort_dm_by_sample(dm, sample_names):
 
 def filter_dms(otu_dm, host_dm, interaction, otu_subset):
     """This filters a host dm, symbiont dm, and interaction matrix by a set of
-    sybionts (otus) defined by otu_subset, and returns the sliced values.
+    symbionts (otus) defined by otu_subset, and returns the sliced values.
     Also eliminates any hosts that had no otus present."""
+
     # input host dm, symbiont dm, and otu data
 
     # return filtered dms,
@@ -318,8 +587,8 @@ def filter_dms(otu_dm, host_dm, interaction, otu_subset):
         if otu_dm[0][i] in otu_subset:
             s_vec.append(i)
             s_names.append(otu_dm[0][i])
-    # slice symbiont distance matrix down to only cOTUs in this node
 
+    # slice symbiont distance matrix down to only cOTUs in this node
     s_slice = otu_dm[1][numpy.ix_(s_vec, s_vec)]
 
     # slice interaction matrix down to only cOTUs in this node
@@ -348,10 +617,12 @@ def filter_dms(otu_dm, host_dm, interaction, otu_subset):
 
     return(sliced_otu_dm, sliced_host_dm, sliced_interaction)
 
+
 def processTree(fstr):
     # Attempt to load input as tree
     host_tree = LoadTree(treestring=fstr)
     host_dist = cogent_dist_to_qiime_dist(host_tree.getDistances())
+
     return host_tree, host_dist
 
 
@@ -364,20 +635,24 @@ def processAlignment(fstr):
 
     # generate tree from matrix
     host_tree = distmat_to_tree(host_dist)
+
     return host_tree, host_dist
 
 
 def processMatrix(fstr):
     dists = fstr.splitlines()
+
     # Parse distance matrix and build tree
     host_dist = parse_distmat(dists)
     host_tree = distmat_to_tree(host_dist)
+
     return host_tree, host_dist
 
 
 def distmat_to_tree(distmat):
     dist_headers, dist_matrix = distmat
     cogent_host_dist = {}
+
     # Loop through host distance matrix to create a dictionary of pairwise
     # distances
     for i, item in enumerate(dist_matrix):
@@ -385,8 +660,8 @@ def distmat_to_tree(distmat):
             if i != j:
                 cogent_host_dist[
                     (dist_headers[i], dist_headers[j])] = dist_matrix[i][j]
-    # Generate tree from distance matrix
 
+    # Generate tree from distance matrix
     return nj.nj(cogent_host_dist)
 
 def add_corrections_to_results_dict(results_dict, results_header):
@@ -486,6 +761,22 @@ def get_sig_nodes(results_dict, results_header, significance_level):
                 bh_fdr_sig_nodes.append((potu,i))
     return sig_nodes, fdr_sig_nodes, bh_fdr_sig_nodes, bonferroni_sig_nodes
 
+def collapse_and_write_otu_table(otu_table_fp, mapping_fp, collapse_fields, collapse_mode):
+    collapsed_metadata, collapsed_table = \
+        collapse_samples(load_table(otu_table_fp),
+                         open(mapping_fp, 'U'),
+                         collapse_fields,
+                         collapse_mode)
+
+    output_biom_fp = '_'.join([os.path.splitext(otu_table_fp)[0]] + 
+                                collapse_fields) + os.path.splitext(otu_table_fp)[1]
+
+    #print collapsed_table
+
+    write_biom_table(collapsed_table, output_biom_fp, write_hdf5=False)
+
+    return output_biom_fp
+
 def write_per_otu_results_file(results_dict, results_header, output_dir, test):
     #Write per-OTU results files:
     potu_names = list(results_dict.keys())
@@ -531,7 +822,7 @@ def write_sig_nodes_files(results_dict, results_header, output_dir, otu_to_taxon
             sig_nodes_file.write("\n")
         sig_nodes_file.close()
 
-def reconcile_hosts_symbionts(cotu_table, host_dist):
+def reconcile_hosts_symbionts(cotu_table, host_dist, min_val=1):
 
     shared_hosts = set(cotu_table.ids(axis='sample')).intersection(host_dist[0])
 
@@ -542,7 +833,7 @@ def reconcile_hosts_symbionts(cotu_table, host_dist):
 
     # filter cOTU table again to get rid of absent cOTUs. BIOM should do this.
 
-    cotu_table_filtered.filter(lambda val, id_, metadata: 1 <= val.sum(), axis='observation', inplace=True)
+    cotu_table_filtered.filter(lambda val, id_, metadata: min_val <= val.sum(), axis='observation', inplace=True)
     
     # Filter the host_dists to match the newly trimmed subtree
     # Note: this is requiring the modified filter_dist method which
