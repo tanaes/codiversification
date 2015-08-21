@@ -335,7 +335,6 @@ def _gen_lists(labels):
     return labels[i_array], labels[j_array]
 
 
-
 def cogent_dist_to_qiime_dist(dist_tuple_dict):
     """
     This takes a dict with tuple keys and distance values, such as is output

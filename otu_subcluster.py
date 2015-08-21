@@ -144,8 +144,7 @@ def main():
             params=params,
             qiime_config=qiime_config,
             parallel=parallel,
-            status_update_callback=status_update_callback,
-            run_assign_tax=False)
+            status_update_callback=status_update_callback)
 
 if __name__ == "__main__":
     main()
