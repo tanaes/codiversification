@@ -133,6 +133,8 @@ script_info['optional_options'] = [
                 default=1000),
     make_option('-m', '--mapping_fp', type='existing_filepath',
                 help='the sample metdata mapping file'),
+    make_option('-v', '--verbose', default=False, action='store_true',
+                help='verbose output'),
     make_option('--min_cOTU', type='float', default=1.0,
                 help='minimum counts per cOTU'),
     make_option('--collapse_fields',
@@ -161,6 +163,7 @@ def main():
     output_dir = opts.output_dir
     significance_level = opts.significance_level
     test = opts.test
+    verbose = opts.verbose
     permutations = opts.permutations
     
     if test == 'hommola_host':
@@ -253,7 +256,8 @@ def main():
     # use pOTU table to choose which cOTUs to use.
     for potu in potu_names:
         # ignore comment lines
-        print "Analyzing " + potu 
+        if verbose:
+            print "Analyzing " + potu 
         cotu_table_fp = os.path.join(subcluster_dir,potu,'otu_table.biom')
 
         if not os.path.isfile(cotu_table_fp):
@@ -320,6 +324,9 @@ def main():
         # run hommola test
         results_list, results_header = recursive_hommola(cotu_seqs_filtered, host_subtree, host_dist_filtered, cotu_subtree, cotu_table_filtered, permutations, perm_type, recurse=recurse)
        
+        if verbose:
+            print 'taxonomy: {0} \np: {1} r: {2}'.format(otu_to_taxonomy[potu], string(results_list[0]), string(results_list[5]))
+
         results_dict[potu] = results_list
 
     write_cospeciation_results(results_dict, results_header, significance_level, output_dir, host_tree, otu_to_taxonomy, test)
