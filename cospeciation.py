@@ -387,7 +387,7 @@ def cache_tipnames(tree):
             n._tip_names = reduce(add, [c._tip_names for c in n.Children])
 
 def recursive_hommola(aligned_otu_seqs, host_subtree, host_dm, otu_tree, otu_table, 
-                permutations=10000, recurse=False):
+                permutations=10000, perm_type='hommola', recurse=False):
     """
     Applies Hommola et al test of cospeciation recursively to OTU tree.
 
@@ -455,8 +455,13 @@ def recursive_hommola(aligned_otu_seqs, host_subtree, host_dm, otu_tree, otu_tab
             h_tips.append(len(host_dm_sub[0]))
 
             # calculate permutation p value for hommola test for this node
-            r, p, r_distro = hommola_cospeciation(host_dm_sub[1], otu_dm_sub[1],
+            if perm_type == 'hommola':
+                r, p, r_distro = hommola_cospeciation(host_dm_sub[1], otu_dm_sub[1],
                                                           interaction_sub, permutations)
+            elif perm_type == 'host':
+                r, p, r_distro = hommola_cospeciation_host(host_dm_sub[1], otu_dm_sub[1],
+                                                          interaction_sub, permutations)
+
             # append to results list
             p_vals.append(p)
             r_vals.append(r)

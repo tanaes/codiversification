@@ -111,8 +111,8 @@ script_info['required_options'] = [
     make_option('-p', '--potu_table_fp', type="existing_filepath",
                 help='the input pOTU table file [REQUIRED]'),
     options_lookup["output_dir"],
-    make_option('-T', '--test', type="choice", choices=["unifrac", "hommola", "hommola_recursive"],
-                help='desired test (unifrac, hommola, hommola_recursive) [REQUIRED]')
+    make_option('-T', '--test', type="choice", choices=["unifrac", "hommola", "hommola_host", "hommola_recursive"],
+                help='desired test (unifrac, hommola, hommola_host, hommola_recursive) [REQUIRED]')
     ]
 script_info['optional_options'] = [
     make_option('-t', '--taxonomy_fp', type="existing_filepath",
@@ -163,6 +163,11 @@ def main():
     test = opts.test
     permutations = opts.permutations
     
+    if test == 'hommola_host':
+        perm_type = 'host'
+    else:
+        perm_type = 'hommola'
+
     force = opts.force
     min_cOTU = opts.min_cOTU
 
@@ -313,7 +318,7 @@ def main():
         cotu_seqs_filtered = aligned_otu_seqs.takeSeqs(list(cotu_names_filtered))
 
         # run hommola test
-        results_list, results_header = recursive_hommola(cotu_seqs_filtered, host_subtree, host_dist_filtered, cotu_subtree, cotu_table_filtered, permutations, recurse=recurse)
+        results_list, results_header = recursive_hommola(cotu_seqs_filtered, host_subtree, host_dist_filtered, cotu_subtree, cotu_table_filtered, permutations, perm_type, recurse=recurse)
        
         results_dict[potu] = results_list
 
