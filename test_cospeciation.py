@@ -227,7 +227,14 @@ def main():
         print "Error loading taxonomy info"
     # Process host input (tree/alignment/matrix) and take subtree of host
     # supertree
-    host_tree, host_dist = make_dists_and_tree(sample_names, host_fp, host_input_type)
+    try:
+        host_tree, host_dist = make_dists_and_tree(sample_names, host_fp, host_input_type)
+    except:
+        print "Problem reconciling host tree and otu table."
+        print "Hosts in otu table: \n"
+        print sample_names
+        print "Hosts in starting tree: \n"
+        raise
 
     # At this point, the host tree and host dist matrix have the intersect of
     # the samples in the pOTU table and the input host tree/dm.
@@ -252,6 +259,17 @@ def main():
             cotu_table_fp = collapse_and_write_otu_table(cotu_table_fp, mapping_fp, collapse_fields, collapse_mode)
         # Read in cOTU file
         cotu_table = load_table(cotu_table_fp)
+        
+        try:
+            cotu_table_filtered, host_dist_filtered = reconcile_hosts_symbionts(
+                cotu_table, host_dist, min_cOTU)
+        except:
+            print "Problem reconciling host tree and otu table."
+            print "Hosts in otu table: \n"
+            print cotu_table.ids(axis="sample")
+            print "Hosts in starting tree: \n"
+            print host_dist
+            raise
 
         # Reconcile hosts in host DM and cOTU table
         cotu_table_filtered, host_dist_filtered = reconcile_hosts_symbionts(
