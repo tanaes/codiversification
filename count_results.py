@@ -63,7 +63,7 @@ def main():
         for width_dir in cluster_width_dirs:
             rdict = {results_file: len(read_results(os.path.join(width_dir, folder_name, results_file + ".txt"))) for results_file in fieldnames[2:]}
             rdict['pOTU Width'] = os.path.split(width_dir)[1]
-            rdict['tested_nodes'] = len(glob.glob(os.path.join(results_dir,'*_results.txt')))
+            rdict['tested_nodes'] = len(glob.glob(os.path.join(width_dir, folder_name,'*_results.txt')))
             writer.writerow(rdict)
         
     
