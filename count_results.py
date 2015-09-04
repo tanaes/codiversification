@@ -48,7 +48,6 @@ def main():
     
     results_dir = opts.results_dir
     output_fp = opts.output_fp    
-    force = opts.force
     
     output_fp = os.path.abspath(output_fp)
     results_dir = os.path.abspath(results_dir)
