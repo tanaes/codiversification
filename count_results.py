@@ -57,12 +57,13 @@ def main():
     cluster_width_dirs = sorted([name for name in glob.glob(os.path.join(results_dir, '[0-9][0-9]')) if os.path.isdir(name)])
     
     with open(output_fp, 'w') as outfile:
-        fieldnames = ["pOTU Width", "uncorrected_sig_nodes", "FDR_sig_nodes", "bh_FDR_sig_nodes", "bonferroni_sig_nodes"]
+        fieldnames = ["pOTU Width", "tested_nodes", "uncorrected_sig_nodes", "FDR_sig_nodes", "bh_FDR_sig_nodes", "bonferroni_sig_nodes"]
         writer = csv.DictWriter(outfile, fieldnames=fieldnames, delimiter="\t")
         writer.writeheader()
         for width_dir in cluster_width_dirs:
-            rdict = {results_file: len(read_results(os.path.join(width_dir, folder_name, results_file + ".txt"))) for results_file in fieldnames[1:]}
+            rdict = {results_file: len(read_results(os.path.join(width_dir, folder_name, results_file + ".txt"))) for results_file in fieldnames[2:]}
             rdict['pOTU Width'] = os.path.split(width_dir)[1]
+            rdict['tested_nodes'] = len(glob.glob(os.path.join(results_dir,'*_results.txt')))
             writer.writerow(rdict)
         
     
