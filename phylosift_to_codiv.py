@@ -56,7 +56,7 @@ def parse_ps_taxa_summary(taxa_f, ok_taxa = ['superkingdom', 'phylum', 'class', 
         taxon_line = line.strip().split('\t')
 
         if taxon_line[0] not in taxa_dict:
-            taxa_dict[taxon_line[0]] = {'superkingdom': None, 'phylum': None, 'class': None, 'order': None, 'family': None, 'genus': None, 'species': None}
+            taxa_dict[taxon_line[0]] = {'superkingdom': 'NA', 'phylum': 'NA', 'class': 'NA', 'order': 'NA', 'family': 'NA', 'genus': 'NA', 'species': 'NA'}
 
         if taxon_line[3] in ok_taxa and float(taxon_line[5]) > 0.5:
             taxa_dict[taxon_line[0]][taxon_line[3]] = taxon_line[4]
@@ -171,6 +171,8 @@ def write_ps_cOTUs(potu_biom, cOTU_bioms, seq_info_df, aln_dict, output_dir, for
 
 
 """
+### Run this in bash to make the tree files for codiv analysis
+
 for path in ./*; do
     [ -d "${path}" ] || continue # if not a directory, skip
     d_name="$(basename "${path}")"
