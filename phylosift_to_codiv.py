@@ -1,8 +1,37 @@
 #!/usr/bin/env python
 
+import argparse
+import os
 import sys
 import pandas as pd
+import numpy as np
 from biom import Table
+
+
+parser = argparse.ArgumentParser()
+
+parser.add_argument('-o', '--output_dir', 
+    type=str,
+    help='path to create output directory')
+
+parser.add_argument('-i', '--sample_info_fp', 
+    type=str,
+    help='path to sample input file')
+
+parser.add_argument('-m', '--markers_fp', 
+    type=str,
+    help='path to marker specification file')
+
+parser.add_argument('-n', '--marker_name_fp', 
+    type=str,
+    help='path to marker info file')
+
+parser.add_argument('-f', '--force', 
+    action='store_true',
+    help='set to overwrite output directories if necessary')
+
+
+
 
 #Method to parse taxonomy summaries from PhyloSift
 
@@ -154,7 +183,15 @@ done
 
 def main():
 
-    
+    args = parser.parse_args()
+
+    output_dir = args.output_dir
+    sample_info_fp = args.sample_info_fp
+    markers_fp = args.markers_fp
+    marker_name_fp = args.marker_name_fp
+    force = args.force
+
+
     try:
         os.makedirs(output_dir)
     except OSError:
@@ -167,7 +204,7 @@ def main():
 
     sample_info = pd.read_table(sample_info_fp, index_col=False)
 
-    sample_ids = [x for x in sample_info.Sample]
+    sample_ids = [x for x in sample_info.SampleID]
 
     # eat the list of markers (these are pOTUs)
 
@@ -176,10 +213,8 @@ def main():
 
     if marker_name_fp:
         marker_tax_df = pd.read_table(marker_name_fp, header=None, names=['gene'], index_col=0)
-        marker_name_tax = [{'taxonomy': [x[1][0]]} for x in marker_taxa_df.reindex(markers).iterrows()]
     else:
-        marker_name_tax = None
-
+        marker_tax_df = pd.DataFrame({'gene': markers}, index=pd.Index(markers))
 
     # initialize a pOTU biom table -- samples by markers
 
@@ -282,8 +317,6 @@ def main():
                                   de_na=True,
                                   obs_name_col='newname')
 
-        cotu_biom.to_json('phylosift_to_codiv.py')
-
     potu_biom = pd_df_to_biom(pOTU_df,
                               metadata_df = marker_tax_df.reset_index(),
                               metadata_func=tax_df_to_tax,
@@ -294,7 +327,8 @@ def main():
 
     # output in subclustered directory structure
 
-    force = True
+    write_ps_cOTUs(potu_biom, cOTU_bioms, seq_info_df, aln_dict, output_dir, force=force)
 
-    write_ps_cOTUs(potu_biom, cOTU_bioms, seq_info_df, aln_dict, output_dir, force=True)
 
+if __name__ == "__main__":
+    main()

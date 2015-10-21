@@ -1,0 +1,3 @@
+SampleID	ps_dir	lencovgc_file
+JS0206_persimilis	/Users/jonsanders/Dropbox/Documents/Research/Postdoc/Knight_Lab/metagenome_codiv/PS_temp/JS0206_persimilis.lencovgc.fna	/Users/jonsanders/Dropbox/Documents/Research/Postdoc/Knight_Lab/metagenome_codiv/PS_temp/JS0206_persimilis.lencovgc.txt	
+JS0671_angustus	/Users/jonsanders/Dropbox/Documents/Research/Postdoc/Knight_Lab/metagenome_codiv/PS_temp/JS0671_angustus.lencovgc.fna	/Users/jonsanders/Dropbox/Documents/Research/Postdoc/Knight_Lab/metagenome_codiv/PS_temp/JS0671_angustus.lencovgc.txt
