@@ -314,7 +314,7 @@ def main():
     cOTU_bioms = {}
     for marker in cOTU_dfs:
         cOTU_bioms[marker] = pd_df_to_biom(cOTU_dfs[marker],
-                                  metadata_df=seq_info_df,
+                                  metadata_df=seq_info_df.fillna(value='NA'),
                                   metadata_func=tax_df_to_tax,
                                   de_na=True,
                                   obs_name_col='newname')
