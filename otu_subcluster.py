@@ -15,6 +15,9 @@ from sys import exit, stderr, stdout
 
 import os
 import sys
+import tempfile
+
+from qcli.util import qcli_system_call
 
 from qiime.util import make_option
 from qiime.util import load_qiime_config, parse_command_line_parameters,\
@@ -77,6 +80,21 @@ script_info['optional_options'] = [
 
 script_info['version'] = __version__
 
+def seqtk(fasta_fp, out_fp, fasta_headers):
+    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+        for header in fasta_headers:
+            temp_file.write(header + '\n')
+
+    cmd = 'seqtk subseq {0} {1} > {2}'.format(fasta_fp, temp_file.name, out_fp)
+    o, e, r = qcli_system_call(cmd)
+    # with open(out_fp,'w') as f:
+    #     p = subprocess.Popen(cmd, stdin=subprocess.PIPE)
+    #     p.communicate(fasta_headers)
+
+    os.remove(temp_file.name)
+
+    return(r)
+
 
 def main():
 
@@ -115,16 +133,16 @@ def main():
     with open(otu_map_fp) as otu_map_f:
         otu_to_seqid = fields_to_dict(otu_map_f)
 
-    # get the seqs.fna for all the sequences in the whole set
-    fasta_collection = LoadSeqs(fasta_fp, moltype=DNA, aligned=False,
-                                label_to_name=lambda x: x.split()[0])
+    # # get the seqs.fna for all the sequences in the whole set
+    # fasta_collection = LoadSeqs(fasta_fp, moltype=DNA, aligned=False,
+    #                             label_to_name=lambda x: x.split()[0])
 
     # get the pOTUs in the filtered otu table
     potu_table = load_table(otu_table_fp)
 
     # for each of the OTUs in this filtered parent table,
     for pOTU in potu_table.ids(axis='observation'):
-
+        print('doing pOTU #{}'.format(pOTU))
         potu_dir = os.path.join(output_dir, str(pOTU))
 
         try:
@@ -132,9 +150,16 @@ def main():
         except OSError:
             pass
 
-        seqs_in_otu = fasta_collection.takeSeqs(otu_to_seqid[pOTU])
+        print('grabbing otu to seqids')
+        x = otu_to_seqid[pOTU]
+
+        # print('doing takeSeqs')
+        # seqs_in_otu = fasta_collection.takeSeqs(x)
+
+        print('writing fasta')
         output_fna_fp = os.path.join(potu_dir, 'seqs.fasta')
-        seqs_in_otu.writeToFile(output_fna_fp)
+        # seqs_in_otu.writeToFile(output_fna_fp)
+        werks = seqtk(fasta_fp, output_fna_fp, x)
 
         # pre process seqs from pOTUs
         run_pick_de_novo_otus(
