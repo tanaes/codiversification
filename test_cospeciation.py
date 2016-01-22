@@ -133,8 +133,8 @@ script_info['optional_options'] = [
                 default=1000),
     make_option('-m', '--mapping_fp', type='existing_filepath',
                 help='the sample metdata mapping file'),
-    make_option('-v', '--verbose', default=False, action='store_true',
-                help='verbose output'),
+    make_option('--otu_tree_dist', action='store_true',
+                help='use cOTU tree distances instead of DNA distances'),
     make_option('--min_cOTU', type='float', default=1.0,
                 help='minimum counts per cOTU'),
     make_option('--collapse_fields',
@@ -165,6 +165,7 @@ def main():
     test = opts.test
     verbose = opts.verbose
     permutations = opts.permutations
+    otu_tree_dist = opts.otu_tree_dist
     
     if test == 'hommola_host':
         perm_type = 'host'
@@ -324,7 +325,7 @@ def main():
         cotu_seqs_filtered = aligned_otu_seqs.takeSeqs(list(cotu_names_filtered))
 
         # run hommola test
-        results_list, results_header = recursive_hommola(cotu_seqs_filtered, host_subtree, host_dist_filtered, cotu_subtree, cotu_table_filtered, permutations, perm_type, recurse=recurse)
+        results_list, results_header = recursive_hommola(cotu_seqs_filtered, host_subtree, host_dist_filtered, cotu_subtree, cotu_table_filtered, permutations=permutations, perm_type=perm_type, otu_tree_dist=otu_tree_dist, recurse=recurse)
        
         if verbose:
             print 'taxonomy: {0} \np: {1} r: {2}'.format(otu_to_taxonomy[potu], string(results_list[0]), string(results_list[5]))

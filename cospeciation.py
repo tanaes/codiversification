@@ -369,6 +369,8 @@ def cogent_dist_to_qiime_dist(dist_tuple_dict):
     # output tab-delimited printable string of the items in dict2d including
     # headers.
     dist_delim = dict2d.toDelimited()
+    with open('text.dm.txt','w') as f:
+        f.write(dist_delim)
 
     # generate and return Qiime distance matrix
     return parse_distmat(StringIO(dist_delim[1:]))
@@ -387,7 +389,7 @@ def cache_tipnames(tree):
             n._tip_names = reduce(add, [c._tip_names for c in n.Children])
 
 def recursive_hommola(aligned_otu_seqs, host_subtree, host_dm, otu_tree, otu_table, 
-                permutations=10000, perm_type='hommola', recurse=False):
+                otu_tree_dist=False, permutations=10000, perm_type='hommola', recurse=False):
     """
     Applies Hommola et al test of cospeciation recursively to OTU tree.
 
@@ -408,11 +410,14 @@ def recursive_hommola(aligned_otu_seqs, host_subtree, host_dm, otu_tree, otu_tab
     presence_absence = otu_table.pa(inplace=False)
     interaction = numpy.asarray(list(presence_absence.iter_data(axis='observation')))
     
-    # calculate pairise distances between OTUs
-    dist_calc = TN93Pair(DNA, alignment=aligned_otu_seqs)
-    dist_calc.run()
+    if otu_tree_dist:
+        otu_dists = otu_tree.getDistances()
+    else:
+        # calculate pairise distances between OTUs
+        dist_calc = TN93Pair(DNA, alignment=aligned_otu_seqs)
+        dist_calc.run()
 
-    otu_dists = dist_calc.getPairwiseDistances()
+        otu_dists = dist_calc.getPairwiseDistances()
 
     otu_dm = cogent_dist_to_qiime_dist(otu_dists)
 

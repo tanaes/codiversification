@@ -382,7 +382,7 @@ class HommolaTests(TestCase):
         dm = sort_dm_by_sample(unsorted_dm, sample_order)
         
         self.assertEqual(dm, expected_dm)
-	
+
     def test_recursive_hommola(self):
         exp_h_nodes = LoadTree(treestring="((SHNT:0.0865915890705,(SHNP:0.0718459904766,SHNO:0.0718459904767):0.0147455985938):0.0267606238488,SHNW:0.113352212919);")
         exp_s_nodes = LoadTree(treestring="((1:0.00015,2:0.02813)0.894:0.00235,(0:0.02491,(3:0.00499,(4:0.00503,5:0.0025)0.927:0.00014)0.655:0.00787):0.00557);")
