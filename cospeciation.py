@@ -777,15 +777,15 @@ def collapse_and_write_otu_table(otu_table_fp, mapping_fp, collapse_fields, coll
 
         sample_ids_to_keep = set(sample_ids_to_keep) & sample_id_f_ids
 
-        filtered_otu_table = filter_samples_from_otu_table(
-            otu_table, sample_ids_to_keep, 0, np.inf,
-            negate_ids_to_keep=False)
+    filtered_otu_table = filter_samples_from_otu_table(
+        otu_table, sample_ids_to_keep, 0, np.inf,
+        negate_ids_to_keep=False)
 
-        collapsed_metadata, collapsed_table = \
-            collapse_samples(filtered_otu_table,
-                             mapping_f,
-                             collapse_fields,
-                             collapse_mode)
+    collapsed_metadata, collapsed_table = \
+        collapse_samples(filtered_otu_table,
+                         open(mapping_fp, 'U'),
+                         collapse_fields,
+                         collapse_mode)
 
     output_biom_fp = '_'.join([os.path.splitext(otu_table_fp)[0]] + 
                                 collapse_fields) + os.path.splitext(otu_table_fp)[1]
