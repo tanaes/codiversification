@@ -766,11 +766,26 @@ def get_sig_nodes(results_dict, results_header, significance_level):
     return sig_nodes, fdr_sig_nodes, bh_fdr_sig_nodes, bonferroni_sig_nodes
 
 def collapse_and_write_otu_table(otu_table_fp, mapping_fp, collapse_fields, collapse_mode):
-    collapsed_metadata, collapsed_table = \
-        collapse_samples(load_table(otu_table_fp),
-                         open(mapping_fp, 'U'),
-                         collapse_fields,
-                         collapse_mode)
+
+    otu_table = load_table(otu_table_fp)
+
+    sample_ids_to_keep = otu_table.ids()
+
+    with open(mapping_fp, 'U') as mapping_f:
+        sample_id_f_ids = set([l.strip().split()[0] for l in mapping_f if not
+                               l.startswith('#')])
+
+        sample_ids_to_keep = set(sample_ids_to_keep) & sample_id_f_ids
+
+        filtered_otu_table = filter_samples_from_otu_table(
+            otu_table, sample_ids_to_keep, 0, np.inf,
+            negate_ids_to_keep=False)
+
+        collapsed_metadata, collapsed_table = \
+            collapse_samples(filtered_otu_table,
+                             mapping_f,
+                             collapse_fields,
+                             collapse_mode)
 
     output_biom_fp = '_'.join([os.path.splitext(otu_table_fp)[0]] + 
                                 collapse_fields) + os.path.splitext(otu_table_fp)[1]
